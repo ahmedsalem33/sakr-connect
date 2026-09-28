@@ -1,11 +1,11 @@
-from flask import Blueprint, render_template, session, abort
+from flask import Blueprint, render_template, session, abort, request
 from datetime import datetime, timedelta
 
 # تعريف البلوبرينت الخاص بمنظومة الأمن والحماية
 security_bp = Blueprint('security', __name__)
 
 # ==========================================
-# 1. سجل التتبع الأمني المركزي
+# 1. سجل التتبع الأمني المركزي (بيانات حية 100%)
 # ==========================================
 @security_bp.route('/security/logs')
 def security_logs():
@@ -13,8 +13,36 @@ def security_logs():
     # السجلات الأمنية حكر على الإدارة العليا فقط (super_admin + admin)
     if role not in ['admin', 'super_admin']:
         abort(403)
-        
-    return render_template('security_logs.html', project_name="Sakr Connect")
+
+    from core.db_manager import db_session
+    from database.models import AuditLog
+
+    search_term = request.args.get('search', '').strip()
+    logs = []
+    total_today = 0
+    critical_alerts = 0
+    try:
+        q = db_session.query(AuditLog)
+        if search_term:
+            like = '%{}%'.format(search_term)
+            q = q.filter(
+                (AuditLog.code.like(like)) |
+                (AuditLog.mac_address.like(like)) |
+                (AuditLog.action.like(like))
+            )
+        logs = q.order_by(AuditLog.id.desc()).limit(200).all()
+
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        total_today = db_session.query(AuditLog).filter(AuditLog.timestamp >= today).count()
+        critical_alerts = db_session.query(AuditLog).filter(
+            AuditLog.action.in_(['login_failed', 'admin_login_failed', 'blocked_login'])
+        ).count()
+    except Exception as e:
+        print('security_logs error: {}'.format(e))
+
+    return render_template('security_logs.html', project_name="Sakr Connect",
+                           logs=logs, total_today=total_today,
+                           critical_alerts=critical_alerts, search_term=search_term)
 
 # ==========================================
 # 2. مراقبة الاختراقات والهجمات - حي 100% بدون وهمي
