@@ -1,0 +1,243 @@
+/* إعادة تعيين الإعدادات الأساسية لضمان الثبات */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f1f5f9; /* أرضية رمادية مريحة خلف الهاتف */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* منع ظهور شريط التمرير ليظهر كأنه تطبيق حقيقي */
+}
+
+/* حاوية التطبيق الرئيسية */
+.app-wrapper {
+    width: 100%;
+    height: 100%;
+    max-width: 480px; /* أقصى عرض متوافق مع معايير شاشات الموبايل الكبيرة */
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1); /* ظل جانبي فخم يظهر على المتصفح */
+}
+
+/* تنسيق الهيدر العلوي الاحترافي */
+.app-header {
+    background: #0f172a; /* اللون الكحلي المظلم للشركات التقنية */
+    color: #38bdf8;
+    text-align: center;
+    padding: 20px 15px;
+    border-bottom: 1px solid #1e293b;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.app-header p {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* تنسيق جسم التطبيق الداخلي */
+.login-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px 24px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    overflow-y: auto; /* للسماح بالتمرير الداخلي المرن إذا كانت الشاشة صغيرة جداً */
+}
+
+/* تنسيق شعار واسم الشبكة الديناميكي */
+.network-branding {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.network-icon {
+    font-size: 60px;
+    margin-bottom: 12px;
+    display: inline-block;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
+}
+
+.network-logo {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: 12px;
+    border: 4px solid #ffffff;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.network-branding h2 {
+    color: #1e293b;
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 6px;
+}
+
+.network-branding p {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* رسائل الخطأ الأنيقة */
+.error-msg {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    padding: 14px;
+    border-radius: 12px;
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    animation: shake 0.4s ease-in-out; /* حركة اهتزاز خفيفة عند الخطأ لجذب الانتباه */
+}
+
+/* نموذج تسجيل الدخول */
+.login-form .input-group {
+    margin-bottom: 20px;
+}
+
+.login-form label {
+    display: block;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    padding-right: 4px;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    font-size: 16px;
+    text-align: center;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) inset;
+}
+
+.login-form input:focus {
+    border-color: #0284c7;
+    background: #ffffff;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15); /* تأثير الوهج العالمي عند التحديد */
+}
+
+/* خيار حفظ تسجيل الدخول الأنيق */
+.remember-me {
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.remember-me label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember-me input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    cursor: pointer;
+    accent-color: #0284c7; /* تلوين الـ Checkbox باللون الأزرق المعتمد للسيستم */
+    box-shadow: none;
+    padding: 0;
+}
+
+/* حاوية الأزرار المزدوجة الحديثة */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* التصميم العالمي الموحد للأزرار */
+.login-btn {
+    flex: 1; /* جعل الأزرار تتقاسم المساحة بالتساوي جنب بعضها */
+    padding: 16px;
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+/* زر دخول المشترك (أزرق حيوي) */
+.login-btn[value="subscriber"] {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+}
+
+/* زر دخول الموزع (كحلي ملكي فخم) */
+.login-btn[value="reseller"] {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.3);
+}
+
+/* تأثيرات الضغط والتحريك للأزرار */
+.login-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+.login-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* الفوتر السفلي الثابت بحقوق المطور والشركة */
+.app-footer {
+    background: #f8fafc;
+    text-align: center;
+    padding: 18px 15px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.app-footer p {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* أنيميشن الاهتزاز عند حدوث خطأ */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}

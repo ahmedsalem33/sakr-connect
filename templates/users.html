@@ -1,0 +1,645 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* التنسيقات العامة والمودرن */
+    select {
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat; background-position: left 1rem center; background-size: 1em; padding-left: 2.5rem !important; cursor: pointer;
+    }
+    
+    .custom-input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; font-size: 14px; }
+    .custom-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+    .form-label { font-size: 13px; color: #cbd5e1; margin-bottom: 6px; display: block; font-weight: bold; }
+    
+    .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+    .toggle-checkbox:checked + .toggle-label:after { transform: translateX(-100%); left: calc(100% - 2px); }
+
+    .step-indicator { display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
+    .step-dot { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; transition: 0.3s; }
+    .step-active { background: #3b82f6; color: white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    .step-inactive { background: #1e293b; color: #64748b; border: 1px solid #334155; }
+    .step-line { height: 2px; width: 60px; background: #334155; margin: 0 10px; transition: 0.3s; }
+    .step-line-active { background: #3b82f6; }
+
+    .stat-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 20px; border-radius: 12px; transition: 0.3s; }
+    .stat-card:hover { transform: translateY(-5px); }
+    
+    /* تنسيقات النوافذ المنبثقة (Modals) */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: start; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: 0.3s; backdrop-filter: blur(4px); padding-top: 2.5rem; padding-bottom: 2.5rem; overflow-y: auto;}
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-box { background: #0f172a; border: 1px solid #334155; border-radius: 16px; width: 95%; max-width: 800px; transform: translateY(-20px); transition: 0.3s; position: relative; overflow: hidden;}
+    .modal-overlay.active .modal-box { transform: translateY(0); }
+</style>
+
+<div class="w-full text-right" dir="rtl">
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-800 pb-2">
+        <button onclick="switchTab('table-view', this)" class="tab-btn px-6 py-2.5 font-bold text-sm rounded-lg transition-all bg-blue-600 text-white shadow-lg shadow-blue-500/20">
+            <i class="fa-solid fa-users ml-2"></i> إدارة المشتركين
+        </button>
+        <button onclick="switchTab('stats-view', this)" class="tab-btn px-6 py-2.5 font-bold text-sm rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800 bg-[#0f172a] border border-transparent">
+            <i class="fa-solid fa-chart-line ml-2"></i> إحصائيات المشتركين
+        </button>
+        <button onclick="switchTab('form-view', this)" class="tab-btn px-6 py-2.5 font-bold text-sm rounded-lg transition-all text-slate-400 hover:text-white hover:bg-slate-800 bg-[#0f172a] border border-transparent">
+            <i class="fa-solid fa-user-plus ml-2"></i> إضافة مشترك جديد
+        </button>
+    </div>
+
+    <div id="table-view" class="tab-content block">
+        <div class="bg-[#0f172a] p-4 rounded-xl border border-slate-800 mb-6 shadow-xl">
+            <form method="GET" class="flex flex-col md:flex-row gap-4 items-center">
+                <select name="server" class="custom-input text-xs w-full md:w-64 bg-[#151f32]">
+                    <option value="">كل السيرفرات والبورتات</option>
+                    {% for router in routers %}
+                    <option value="{{ router.id }}" {% if request.args.get('server') == router.id|string %}selected{% endif %}>{{ router.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="flex-1 w-full">
+                    <input type="text" name="search" placeholder="بحث سريع (الاسم، اليوزر، رقم الهاتف)..." value="{{ search_term }}" class="custom-input text-xs w-full bg-[#151f32]">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg text-xs font-bold transition shadow-lg w-full md:w-auto whitespace-nowrap">تصفية وبحث 🔍</button>
+            </form>
+        </div>
+
+        <div class="bg-[#0f172a] rounded-xl border border-slate-800 shadow-2xl overflow-hidden w-full">
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-right border-collapse text-xs min-w-max">
+                    <thead>
+                        <tr class="bg-[#151f32] text-slate-400 border-b border-slate-700">
+                            <th class="p-4 text-center font-black">#</th>
+                            <th class="p-4 font-black">اسم المشترك / الهاتف</th>
+                            <th class="p-4 font-black">يوزر الدخول</th>
+                            <th class="p-4 font-black">السيرفر (الراوتر)</th>
+                            <th class="p-4 font-black">الباقة / المديونية</th>
+                            <th class="p-4 text-center font-black">الحالة</th>
+                            <th class="p-4 text-center font-black">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-300 divide-y divide-slate-800/50">
+                        {% for user in users %}
+                        <tr class="hover:bg-slate-800/50 transition">
+                            <td class="p-4 text-center text-slate-500 font-bold whitespace-nowrap">{{ loop.index }}</td>
+                            <td class="p-4 min-w-[180px]">
+                                <div class="font-bold text-white text-sm">{{ user.full_name }}</div>
+                                <div class="text-[11px] text-slate-400 mt-1"><i class="fa-solid fa-phone text-[10px] ml-1"></i> {{ user.phone|default('---') }}</div>
+                            </td>
+                            <td class="p-4 font-mono text-blue-400 font-bold text-sm whitespace-nowrap">{{ user.username }}</td>
+                            <td class="p-4 whitespace-nowrap">
+                                <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-1.5 rounded text-xs font-bold">
+                                    <i class="fa-solid fa-server ml-1"></i> {{ user.router.name if user.router else (user.network.name if user.network else '---') }}
+                                </span>
+                            </td>
+                            <td class="p-4 whitespace-nowrap">
+                                <div class="font-bold text-xs text-amber-400">{{ user.offer.name if user.offer else 'بدون عرض' }}</div>
+                                {% if user.balance and user.balance > 0 %}
+                                <div class="text-[11px] text-rose-500 font-bold mt-1 bg-rose-500/10 px-2 py-0.5 rounded inline-block">مديونية: {{ user.balance }} EGP</div>
+                                {% else %}
+                                <div class="text-[11px] text-emerald-500 font-bold mt-1 bg-emerald-500/10 px-2 py-0.5 rounded inline-block">الحساب خالص</div>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-center whitespace-nowrap">
+                                {% if user.status == 'active' %}
+                                    <span class="bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded border border-emerald-500/20 font-bold text-xs">نشط</span>
+                                {% else %}
+                                    <span class="bg-rose-500/10 text-rose-400 px-3 py-1.5 rounded border border-rose-500/20 font-bold text-xs">موقوف</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-4 text-center whitespace-nowrap">
+                                <button onclick="openMasterSubModal('{{ user.id }}', '{{ user.full_name }}', '{{ user.username }}', '{{ user.balance|default(0) }}', '{{ user.status }}', '{{ user.quota_used|default(0) }}', '{{ user.quota_total|default(0) }}', '{{ user.router_id }}', '{{ user.offer_id }}')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-5 py-2 rounded-lg transition-all text-xs font-bold shadow-md w-full sm:w-auto">
+                                    تحكم شامل ⚙️
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="p-12 text-center text-slate-500 font-bold text-sm">لا توجد بيانات للمشتركين مطابقة للبحث 👀</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="stats-view" class="tab-content hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="stat-card border-blue-900/50">
+                <p class="text-slate-400 text-xs font-bold">إجمالي المشتركين بالسيستم</p>
+                <h3 class="text-3xl font-black text-white mt-2">{{ stats_data.total_users|default(0) }}</h3>
+            </div>
+            <div class="stat-card border-emerald-900/50">
+                <p class="text-emerald-400 text-xs font-bold">المشتركين (النشطين حالياً)</p>
+                <h3 class="text-3xl font-black text-emerald-400 mt-2">{{ stats_data.renewed_users|default(0) }}</h3>
+            </div>
+            <div class="stat-card border-amber-900/50">
+                <p class="text-amber-400 text-xs font-bold">إجمالي المديونيات المتأخرة</p>
+                <h3 class="text-3xl font-black text-amber-400 mt-2">{{ stats_data.total_debt|default(0) }} <span class="text-sm">ج.م</span></h3>
+            </div>
+            <div class="stat-card border-rose-900/50">
+                <p class="text-rose-400 text-xs font-bold">المنتهين / الموقوفين</p>
+                <h3 class="text-3xl font-black text-rose-400 mt-2">{{ stats_data.suspended_users|default(0) }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-view" class="tab-content hidden">
+        <div class="bg-[#1e293b] p-6 md:p-8 rounded-2xl border border-slate-700 max-w-4xl mx-auto shadow-2xl">
+            <div class="step-indicator">
+                <div id="step-dot-1" class="step-dot step-active">1</div>
+                <div id="step-line-1" class="step-line"></div>
+                <div id="step-dot-2" class="step-dot step-inactive">2</div>
+            </div>
+
+            <h4 id="wizard-title" class="text-xl font-bold text-white mb-6 text-center border-b border-slate-700 pb-4">البيانات الأساسية للمشترك</h4>
+
+            <form action="{{ url_for('subscribers.manage_users') }}" method="POST" id="add-user-form">
+                
+                <input type="hidden" name="target_network_id" value="{{ owner_network.id if owner_network else '' }}">
+                
+                <div id="wizard-step-1">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label class="form-label">اسم السيرفر <span class="text-rose-500">*</span></label>
+                            <select name="router_id" id="router_id" class="custom-input" required>
+                                <option value="">-- حدد السيرفر --</option>
+                                {% for router in routers %}
+                                <option value="{{ router.id }}">{{ router.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">النوع / الخدمة</label>
+                            <select name="sub_type" class="custom-input">
+                                <option value="home">برودباند (PPPoE)</option>
+                                <option value="hotspot">هوت سبوت</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">اسم المشترك <span class="text-rose-500">*</span></label>
+                            <input type="text" name="full_name" id="full_name" class="custom-input" placeholder="اكتب اسم المشترك بالكامل" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">رقم الهاتف النشط</label>
+                            <input type="text" name="phone" class="custom-input" placeholder="اكتب رقم الهاتف للتواصل">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">اسم المستخدم (Username) <span class="text-rose-500">*</span></label>
+                            <input type="text" name="username" id="username" class="custom-input font-mono" placeholder="يوزر الدخول للشبكة" dir="ltr" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">كلمة السر (Password) <span class="text-rose-500">*</span></label>
+                            <input type="password" name="password" id="password" class="custom-input font-mono" placeholder="باسوورد المشترك" dir="ltr" required>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-700 flex items-center justify-between">
+                        <span class="text-sm font-bold text-blue-400">إضافة معلومات شخصية (اختياري)</span>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                            <input type="checkbox" id="toggle-personal" onchange="togglePersonalInfo()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-500 bg-slate-300 outline-none" style="top: 2px; right: 2px; transition: all 0.3s;"/>
+                            <label for="toggle-personal" class="toggle-label block overflow-hidden h-7 rounded-full bg-slate-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+
+                    <div id="personal-info-section" class="hidden grid-cols-1 md:grid-cols-2 gap-6 mt-6 bg-[#0f172a] p-5 rounded-lg border border-slate-700">
+                        <div class="form-group">
+                            <label class="form-label">رقم البطاقة القومية</label>
+                            <input type="text" name="national_id" class="custom-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            <input type="email" name="email" class="custom-input" dir="ltr">
+                        </div>
+                        <div class="form-group md:col-span-2">
+                            <label class="form-label">العنوان التفصيلي</label>
+                            <input type="text" name="address" class="custom-input">
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end">
+                        <button type="button" onclick="goToStep2()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-10 rounded-lg transition shadow-lg flex items-center gap-2">
+                            التالي للإعدادات المالية <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="wizard-step-2" class="hidden">
+                    <div class="bg-[#0f172a] p-6 rounded-xl border border-slate-700 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="form-label">اسم العرض / الباقة <span class="text-rose-500">*</span></label>
+                                <select name="offer_id" id="offer_select" class="custom-input border-amber-500" required onchange="calculateInvoice()">
+                                    <option value="" data-price="0">-- إجباري: اختر باقة المشترك --</option>
+                                    {% for offer in offers %}
+                                    <option value="{{ offer.id }}" data-price="{{ offer.price }}">{{ offer.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">إجمالي تكلفة الباقة</label>
+                                <div class="relative">
+                                    <input type="text" id="total_price_display" class="custom-input bg-slate-800 text-slate-300 cursor-not-allowed font-black" readonly value="0">
+                                    <span class="absolute left-3 top-3 text-slate-500 font-bold">EGP</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group md:col-span-2">
+                                <label class="form-label text-emerald-400">المبلغ المدفوع (التحصيل اللحظي الآن) <span class="text-rose-500">*</span></label>
+                                <div class="relative">
+                                    <input type="number" name="amount_paid" id="amount_paid" class="custom-input border-emerald-500 font-bold text-xl text-emerald-400 bg-[#0b111e]" value="0" required onkeyup="calculateInvoice()">
+                                    <span class="absolute left-3 top-3 text-slate-500 font-bold">EGP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="debt_alert" class="hidden bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-lg text-center font-bold text-sm md:text-lg mb-6">
+                        هذه الفاتورة مدينة، وسيتم تسجيل مديونية بقيمة <span id="debt_value" class="text-2xl mx-1 font-black">0</span> جنيه
+                    </div>
+                    
+                    <div id="paid_alert" class="hidden bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-lg text-center font-bold text-sm md:text-lg mb-6">
+                        <i class="fa-solid fa-check-circle mr-2"></i> الفاتورة مدفوعة وخالصة بالكامل
+                    </div>
+
+                    <div class="flex flex-col-reverse md:flex-row justify-between items-center mt-8 pt-4 border-t border-slate-700 gap-4">
+                        <button type="button" onclick="goToStep1()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 px-8 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-right"></i> تراجع وتعديل
+                        </button>
+                        <button type="submit" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-12 rounded-lg transition shadow-[0_0_20px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 text-lg">
+                            <i class="fa-solid fa-check"></i> حفظ وتسجيل المشترك
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="masterSubModal" class="modal-overlay">
+    <div class="modal-box p-0">
+        <div class="bg-[#151f32] p-5 border-b border-slate-700 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h2 class="text-xl font-black text-white flex items-center gap-2">
+                    <i class="fa-solid fa-user-astronaut text-blue-500"></i> <span id="modalSubNameTitle">اسم المشترك</span>
+                </h2>
+                <div class="flex items-center gap-3 mt-2">
+                    <span id="modalSubUsername" class="text-sm font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">username</span>
+                    <span id="modalSubStatus" class="px-2 py-0.5 rounded text-xs font-bold border">حالة</span>
+                </div>
+            </div>
+            <button onclick="closeModal('masterSubModal')" class="text-slate-400 hover:text-rose-400 text-3xl font-black focus:outline-none">&times;</button>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-[#0b111e] border border-slate-700 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 mb-1">استهلاك الباقة (GB)</p>
+                        <h4 class="text-lg font-black text-blue-400" dir="ltr">
+                            <span id="modalSubUsed">0</span> / <span id="modalSubTotal" class="text-sm text-slate-500">0</span>
+                        </h4>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xl border border-blue-500/30">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                </div>
+                <div class="bg-rose-900/10 border border-rose-500/20 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div>
+                        <p class="text-xs font-bold text-rose-400 mb-1">المديونية المتأخرة</p>
+                        <h4 class="text-xl font-black text-rose-500" dir="ltr"><span id="modalSubDebt">0</span> EGP</h4>
+                    </div>
+                    <button onclick="triggerSubAction('pay_debt')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-600/20">تسديد وتصفير</button>
+                </div>
+            </div>
+
+            <h3 class="text-sm font-black text-slate-300 border-b border-slate-700 pb-2">العمليات الأساسية والمالية</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <button onclick="triggerSubAction('renew')" class="bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/50 text-emerald-400 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition text-center flex flex-col items-center justify-center gap-1">
+                    <i class="fa-solid fa-rotate-right text-lg"></i> تجديد وتصفير الاستهلاك
+                </button>
+                <button onclick="triggerSubAction('edit')" class="bg-amber-600/20 hover:bg-amber-600 border border-amber-500/50 text-amber-400 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition text-center flex flex-col items-center justify-center gap-1">
+                    <i class="fa-solid fa-user-pen text-lg"></i> تعديل بيانات العميل
+                </button>
+                <button onclick="triggerSubAction('toggle_status')" id="modalSubToggleBtn" class="bg-slate-800 hover:bg-rose-600 border border-slate-700 hover:border-rose-500 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition text-center col-span-2 sm:col-span-1 flex flex-col items-center justify-center gap-1">
+                    <i class="fa-solid fa-power-off text-lg"></i> إيقاف الخدمة مؤقتاً
+                </button>
+            </div>
+
+            <h3 class="text-sm font-black text-slate-300 border-b border-slate-700 pb-2 mt-6">التحكم الفني (Mikrotik & Security)</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="triggerSubAction('clear_mac')" class="bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/50 text-indigo-400 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">تصفير الماك أدريس (Clear MAC)</button>
+                <button onclick="triggerSubAction('kick')" class="bg-rose-900/40 hover:bg-rose-600 border border-rose-900 hover:border-rose-500 text-rose-400 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">طرد من السيرفر الحي (Kick Session)</button>
+                <button onclick="triggerSubAction('change_password')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">تغيير الباسوورد (Password)</button>
+                <button onclick="triggerSubAction('delete')" class="bg-red-950 hover:bg-red-700 border border-red-900 text-red-500 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">حذف العميل نهائياً 🗑️</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal-overlay">
+    <div class="modal-box shadow-2xl">
+        <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">تعديل بيانات المشترك</h3>
+        <form action="{{ url_for('subscribers.edit_user_post') }}" method="POST">
+            <input type="hidden" name="user_id" id="edit_user_id">
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="form-label">اسم المشترك</label>
+                    <input type="text" name="full_name" id="edit_full_name" class="custom-input" required>
+                </div>
+                <div>
+                    <label class="form-label">يوزر الدخول</label>
+                    <input type="text" name="username" id="edit_username" class="custom-input" dir="ltr" required>
+                </div>
+                <div>
+                    <label class="form-label">تغيير الباسورد (اتركه فارغاً للاحتفاظ بالقديم)</label>
+                    <input type="password" name="password" class="custom-input" dir="ltr" placeholder="********">
+                </div>
+                <div>
+                    <label class="form-label">السيرفر</label>
+                    <select name="router_id" id="edit_router_id" class="custom-input">
+                        {% for router in routers %}
+                        <option value="{{ router.id }}">{{ router.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">العرض / الباقة</label>
+                    <select name="offer_id" id="edit_offer_id" class="custom-input">
+                        {% for offer in offers %}
+                        <option value="{{ offer.id }}">{{ offer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-between">
+                <button type="button" onclick="closeModal('editModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded font-bold transition">إلغاء</button>
+                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded font-bold transition">حفظ التعديلات</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="balanceModal" class="modal-overlay">
+    <div class="modal-box shadow-2xl">
+        <h3 class="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2"><i class="fa-solid fa-wallet"></i> تسديد مديونية / رصيد</h3>
+        <form action="{{ url_for('subscribers.add_balance_post') }}" method="POST">
+            <input type="hidden" name="user_id" id="balance_user_id">
+            
+            <div class="mb-4 text-center">
+                <p class="text-sm text-slate-400">المديونية الحالية للمشترك: <span id="balance_name" class="text-white font-bold"></span></p>
+                <h2 class="text-3xl font-black text-rose-500 mt-2" dir="ltr"><span id="current_debt">0</span> EGP</h2>
+            </div>
+            
+            <div class="form-group mt-6">
+                <label class="form-label">المبلغ المراد تسديده</label>
+                <input type="number" step="0.01" name="amount" class="custom-input text-center text-xl font-bold text-emerald-400" required placeholder="0.00">
+            </div>
+            
+            <div class="mt-8 flex justify-between">
+                <button type="button" onclick="closeModal('balanceModal')" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded font-bold transition">إلغاء</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded font-bold shadow-[0_0_15px_rgba(16,185,129,0.4)] transition">تنفيذ السداد</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast-container-local" class="fixed bottom-5 left-5 z-50 space-y-2"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // متغيرات المودال الشامل
+    window.currentSubId = null;
+    window.currentSubName = "";
+    window.currentSubUsername = "";
+    window.currentSubRouterId = null;
+    window.currentSubOfferId = null;
+    window.currentSubDebt = 0;
+
+    function showLocalNotification(message, type = 'success') {
+        const container = document.getElementById('toast-container-local');
+        if(!container) return;
+        const toast = document.createElement('div');
+        toast.className = `p-4 rounded-lg shadow-xl border text-xs font-bold text-white transition transform translate-y-2 duration-300 flex items-center gap-2 ${
+            type === 'success' ? 'bg-emerald-900 border-emerald-700' : 'bg-rose-900 border-rose-700'
+        }`;
+        toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/20');
+            b.classList.add('bg-[#0f172a]', 'text-slate-400', 'border-transparent');
+        });
+        document.getElementById(tabId).classList.remove('hidden');
+        btn.classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-500/20');
+        btn.classList.remove('bg-[#0f172a]', 'text-slate-400', 'border-transparent');
+        if(tabId === 'form-view') goToStep1();
+    }
+
+    function togglePersonalInfo() {
+        const section = document.getElementById('personal-info-section');
+        const checkbox = document.getElementById('toggle-personal');
+        if (checkbox.checked) {
+            section.classList.remove('hidden');
+        } else {
+            section.classList.add('hidden');
+            section.querySelectorAll('input').forEach(input => input.value = '');
+        }
+    }
+
+    function goToStep2() {
+        const routerId = document.getElementById('router_id').value;
+        const name = document.getElementById('full_name').value;
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+
+        if(!routerId || !name || !user || !pass) {
+            alert('يرجى استكمال الحقول الإجبارية (السيرفر، الاسم، اليوزر، الباسورد).');
+            return;
+        }
+        document.getElementById('wizard-step-1').classList.add('hidden');
+        document.getElementById('wizard-step-2').classList.remove('hidden');
+        document.getElementById('step-dot-2').classList.replace('step-inactive', 'step-active');
+        document.getElementById('step-line-1').classList.add('step-line-active');
+        document.getElementById('wizard-title').innerText = "تفاصيل الفاتورة والاشتراك";
+    }
+
+    function goToStep1() {
+        document.getElementById('wizard-step-2').classList.add('hidden');
+        document.getElementById('wizard-step-1').classList.remove('hidden');
+        document.getElementById('step-dot-2').classList.replace('step-active', 'step-inactive');
+        document.getElementById('step-line-1').classList.remove('step-line-active');
+        document.getElementById('wizard-title').innerText = "البيانات الأساسية للمشترك";
+    }
+
+    function calculateInvoice() {
+        const offerSelect = document.getElementById('offer_select');
+        const selectedOption = offerSelect.options[offerSelect.selectedIndex];
+        const totalPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+        
+        const amountPaidInput = document.getElementById('amount_paid');
+        let amountPaid = parseFloat(amountPaidInput.value) || 0;
+
+        document.getElementById('total_price_display').value = totalPrice;
+
+        const debtAlert = document.getElementById('debt_alert');
+        const paidAlert = document.getElementById('paid_alert');
+        const debtValueSpan = document.getElementById('debt_value');
+
+        if (totalPrice > 0) {
+            if (amountPaid < totalPrice) {
+                const debt = totalPrice - amountPaid;
+                debtValueSpan.innerText = debt;
+                debtAlert.classList.remove('hidden');
+                paidAlert.classList.add('hidden');
+            } else {
+                debtAlert.classList.add('hidden');
+                paidAlert.classList.remove('hidden');
+            }
+        } else {
+            debtAlert.classList.add('hidden');
+            paidAlert.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('add-user-form').addEventListener('submit', function(e) {
+        if (!document.getElementById('offer_select').value) {
+            e.preventDefault();
+            alert('🚫 لا يمكن تسجيل المشترك بدون اختيار عرض/باقة.');
+        }
+    });
+
+    // -----------------------------------------------------
+    // دوال النوافذ المنبثقة (Modals)
+    // -----------------------------------------------------
+
+    function openMasterSubModal(id, name, username, debt, status, used, total, routerId, offerId) {
+        window.currentSubId = id;
+        window.currentSubName = name;
+        window.currentSubUsername = username;
+        window.currentSubDebt = debt;
+        window.currentSubRouterId = routerId;
+        window.currentSubOfferId = offerId;
+
+        document.getElementById('modalSubNameTitle').innerText = name;
+        document.getElementById('modalSubUsername').innerText = username;
+        document.getElementById('modalSubUsed').innerText = used;
+        document.getElementById('modalSubTotal').innerText = total;
+        document.getElementById('modalSubDebt').innerText = debt;
+
+        const statusBadge = document.getElementById('modalSubStatus');
+        const toggleBtn = document.getElementById('modalSubToggleBtn');
+
+        if(status === 'active') {
+            statusBadge.innerText = 'نشط ✅';
+            statusBadge.className = 'px-2 py-0.5 rounded text-xs font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+            toggleBtn.innerHTML = '<i class="fa-solid fa-power-off text-lg"></i> إيقاف الخدمة مؤقتاً';
+        } else {
+            statusBadge.innerText = 'موقوف 🔴';
+            statusBadge.className = 'px-2 py-0.5 rounded text-xs font-bold border bg-rose-500/10 text-rose-400 border-rose-500/20';
+            toggleBtn.innerHTML = '<i class="fa-solid fa-power-off text-lg"></i> تفعيل الخدمة ✅';
+        }
+
+        document.getElementById('masterSubModal').classList.add('active');
+    }
+
+    function openEditModal(id, name, username, router_id, offer_id) {
+        document.getElementById('edit_user_id').value = id;
+        document.getElementById('edit_full_name').value = name;
+        document.getElementById('edit_username').value = username;
+        if(router_id && router_id !== 'None') document.getElementById('edit_router_id').value = router_id;
+        if(offer_id && offer_id !== 'None') document.getElementById('edit_offer_id').value = offer_id;
+        
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function openBalanceModal(id, name, debt) {
+        document.getElementById('balance_user_id').value = id;
+        document.getElementById('balance_name').innerText = name;
+        document.getElementById('current_debt').innerText = parseFloat(debt).toFixed(2);
+        
+        document.getElementById('balanceModal').classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    // -----------------------------------------------------
+    // التخاطب مع الباك إند (AJAX)
+    // -----------------------------------------------------
+    async function sendUnifiedAction(url, payload) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if(result.status === 'success' || result.success) {
+                showLocalNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1500); 
+            } else {
+                showLocalNotification(result.message, 'error');
+            }
+        } catch (error) {
+            showLocalNotification("خطأ في الاتصال بالخادم.", 'error');
+        }
+    }
+
+    function triggerSubAction(actionType) {
+        if (!window.currentSubId) return;
+        const id = window.currentSubId;
+        const name = window.currentSubName;
+        const username = window.currentSubUsername;
+        const sysType = 'pppoe';
+
+        if (actionType === 'delete') {
+            if (confirm(`🚨 تحذير نهائي: هل أنت متأكد من حذف المشترك [ ${name} ] وكل ارتباطاته نهائياً؟`)) {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'delete', system: sysType });
+            }
+        }
+        else if (actionType === 'toggle_status') {
+            sendUnifiedAction('/api/client/action', { id: id, action: 'suspend', system: sysType });
+        }
+        else if (actionType === 'clear_mac') {
+            if(confirm(`هل تريد تصفير الماك أدريس للمشترك [ ${name} ] للسماح له بالدخول من راوتر جديد؟`)) {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'clear_mac', system: sysType });
+            }
+        }
+        else if (actionType === 'kick') {
+            if(confirm(`هل تريد فصل الجلسة وطرد المشترك [ ${username} ] من السيرفر الآن؟`)) {
+                sendUnifiedAction('/api/sessions/kick', { username: username, server_id: window.currentSubRouterId });
+            }
+        }
+        else if (actionType === 'change_password') {
+            const newPass = prompt(`أدخل كلمة المرور الجديدة للمشترك [ ${name} ]:`);
+            if (newPass && newPass.trim() !== '') {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'change_password', system: sysType, value: newPass });
+            }
+        }
+        else if (actionType === 'renew') {
+            if(confirm(`تأكيد تجديد الباقة وتصفير استهلاك المشترك [ ${name} ]؟`)) {
+                window.location.href = `/subscribers/renew/${id}`;
+            }
+        }
+        else if (actionType === 'pay_debt') {
+            closeModal('masterSubModal');
+            openBalanceModal(id, name, window.currentSubDebt);
+        }
+        else if (actionType === 'edit') {
+            closeModal('masterSubModal');
+            openEditModal(id, name, username, window.currentSubRouterId, window.currentSubOfferId);
+        }
+    }
+</script>
+{% endblock %}

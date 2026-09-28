@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-[#0f172a] border border-blue-900/30 p-4 rounded-xl shadow-lg">
+        <p class="text-xs text-slate-500 font-bold mb-1">إجمالي الإيرادات المحصلة</p>
+        <h3 class="text-2xl font-black text-white">{{ "{:,.2f}".format(total_revenue|default(0.0)) }} EGP</h3>
+    </div>
+    <div class="bg-[#0f172a] border border-blue-900/30 p-4 rounded-xl shadow-lg">
+        <p class="text-xs text-slate-500 font-bold mb-1">العمليات المسجلة</p>
+        <h3 class="text-2xl font-black text-emerald-400">{{ transactions|length }} عملية</h3>
+    </div>
+    <div class="bg-[#0f172a] border border-blue-900/30 p-4 rounded-xl shadow-lg">
+        <p class="text-xs text-slate-500 font-bold mb-1">المديونيات / عمليات معلقة</p>
+        <h3 class="text-2xl font-black text-rose-400">{{ "{:,.2f}".format(total_debts|default(0.0)) }} EGP</h3>
+    </div>
+    <div class="bg-[#0f172a] border border-blue-900/30 p-4 rounded-xl shadow-lg">
+        <p class="text-xs text-slate-500 font-bold mb-1">
+            {% if session.get('role') in ['super_admin', 'admin'] %}
+                عمولات المنصة المستحقة
+            {% else %}
+                صافي الربح (تقديري)
+            {% endif %}
+        </p>
+        <h3 class="text-2xl font-black text-cyan-400">
+            {% if session.get('role') in ['super_admin', 'admin'] %}
+                {{ "{:,.2f}".format(total_commission_earned|default(0.0)) }} EGP
+            {% else %}
+                {{ "{:,.2f}".format((total_revenue|default(0.0)) - (total_debts|default(0.0))) }} EGP
+            {% endif %}
+        </h3>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- قسم: الفواتير المعلقة - المراجعة والتسديد اليدوي -->
+<!-- ============================================================ -->
+{% if pending_invoices and pending_invoices|length > 0 %}
+<div class="bg-[#1a0f0f] border-2 border-rose-900/50 rounded-xl overflow-hidden shadow-2xl mb-8 animate-pulse-border">
+    <div class="p-4 border-b border-rose-900/30 bg-[#2a1515] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></span>
+            <h2 class="text-sm font-black text-rose-400">🔔 فواتير معلقة - في انتظار تأكيد الدفع اليدوي</h2>
+        </div>
+        <span class="text-[11px] text-rose-500 font-bold bg-rose-950/50 px-3 py-1 rounded-full border border-rose-800/50">
+            {{ pending_invoices|length }} فاتورة بإجمالي {{ "{:,.0f}".format(total_debts|default(0)) }} ج.م
+        </span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs">
+            <thead class="bg-[#1a0f0f] text-rose-400 border-b border-rose-900/30">
+                <tr>
+                    <th class="p-3 font-bold">التاريخ</th>
+                    <th class="p-3 font-bold">العميل</th>
+                    <th class="p-3 font-bold">رقم الهاتف</th>
+                    <th class="p-3 font-bold">كود التحصيل</th>
+                    <th class="p-3 font-bold">رقم المحول</th>
+                    <th class="p-3 font-bold text-center">المبلغ</th>
+                    <th class="p-3 font-bold text-center">تأكيد الدفع</th>
+                </tr>
+            </thead>
+            <tbody class="text-slate-300 divide-y divide-rose-900/20">
+                {% for inv in pending_invoices %}
+                <tr class="hover:bg-rose-950/20 transition-colors">
+                    <td class="p-3 text-slate-500 font-mono text-[10px]">{{ inv.date }}</td>
+                    <td class="p-3 font-bold text-white">{{ inv.customer_name }}</td>
+                    <td class="p-3 font-mono text-blue-400">{{ inv.customer_phone }}</td>
+                    <td class="p-3 font-mono text-amber-400">{{ inv.billing_code }}</td>
+                    <td class="p-3 font-mono">{{ inv.sender_phone }}</td>
+                    <td class="p-3 text-center font-mono font-bold text-rose-400">{{ inv.amount }} ج.م</td>
+                    <td class="p-3 text-center">
+                        <button type="button" 
+                                data-invoice-id="{{ inv.id }}"
+                                data-user-id="{{ inv.user_id }}"
+                                data-amount="{{ inv.amount }}"
+                                data-billing="{{ inv.billing_code }}"
+                                data-customer="{{ inv.customer_name }}"
+                                onclick="confirmManualPayment(this)" 
+                                class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg transition-all shadow-lg shadow-emerald-900/30 border border-emerald-600/50">
+                            ✅ تأكيد استلام الدفع
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+    <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#151f32]">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2">📊 دفتر الحسابات الشامل وإدارة العمليات المركزية</h2>
+        
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <select id="sectorFilter" onchange="filterFinanceTable()" class="bg-[#0b111e] border border-slate-700 text-xs text-slate-300 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 transition-all">
+                <option value="all">كل القطاعات</option>
+                <option value="إيجار">إيجارات السيرفر (B2B)</option>
+                <option value="تجديد">تجديدات الباقات (B2C)</option>
+                <option value="كارت">الكروت الفورية (الكشك)</option>
+            </select>
+
+            <select id="statusFilter" onchange="filterFinanceTable()" class="bg-[#0b111e] border border-slate-700 text-xs text-slate-300 rounded-lg px-3 py-1.5 outline-none focus:border-amber-500 transition-all">
+                <option value="all">كل الحالات المالية</option>
+                <option value="paid">مدفوعة / ناجحة وفتحت الباقة</option>
+                <option value="pending">معلقة / لم تصل إشارة الـ Webhook</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs" id="financeTable">
+            <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                <tr>
+                    <th class="p-4 font-bold">التاريخ</th>
+                    <th class="p-4 font-bold">العميل / الشبكة</th>
+                    <th class="p-4 font-bold">نوع العملية</th>
+                    <th class="p-4 font-bold">طريقة الدفع</th>
+                    <th class="p-4 font-bold">المبلغ</th>
+                    <th class="p-4 font-bold text-center">الحالة المالية</th>
+                    <th class="p-4 font-bold text-center w-64">إجراءات المراجعة والتحكم المركزي</th>
+                </tr>
+            </thead>
+            <tbody class="text-slate-300 divide-y divide-slate-800/50">
+                {% for txn in transactions %}
+                <tr class="hover:bg-slate-800/40 transition-colors txn-row" data-type="{{ txn.type }}" data-status="{{ txn.status }}">
+                    <td class="p-4 text-slate-400" dir="ltr">{{ txn.date }}</td>
+                    <td class="p-4 font-bold text-white">{{ txn.entity_name }}</td>
+                    <td class="p-4 text-blue-300">{{ txn.type }}</td>
+                    <td class="p-4 text-slate-500">{{ txn.method }}</td>
+                    <td class="p-4 font-mono font-bold text-amber-400">{{ txn.amount }} EGP</td>
+                    <td class="p-4 text-center">
+                        {% if txn.status == 'paid' %}
+                            <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">مدفوعة / ناجحة</span>
+                        {% elif txn.status == 'pending' %}
+                            <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">قيد الانتظار</span>
+                        {% else %}
+                            <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">{{ txn.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 text-center flex items-center justify-center gap-1.5">
+                        {% if txn.status == 'pending' %}
+                            <button type="button" onclick="executeManualSettle('{{ txn.id }}', '{{ txn.entity_name }}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] py-1 px-2.5 rounded transition shadow shadow-emerald-600/20">
+                                💰 تسديد يدوي وفتح الباقة
+                            </button>
+                            <button type="button" onclick="executeWebhookRetry('{{ txn.id }}')" class="bg-[#1e293b] border border-amber-500/40 hover:bg-slate-800 text-amber-400 font-bold text-[10px] py-1 px-2.5 rounded transition">
+                                🔄 فحص الـ Webhook
+                            </button>
+                        {% else %}
+                            <span class="text-slate-500 text-[10px] font-mono select-none">لا توجد إجراءات معلقة</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="p-10 text-center text-slate-500">
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-4xl mb-3 opacity-50">📂</span>
+                            <p>لا توجد عمليات مالية مسجلة في الدفتر حتى الآن.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// دالة تأكيد الدفع اليدوي للفواتير المعلقة
+function confirmManualPayment(btn) {
+    const invoiceId = btn.getAttribute('data-invoice-id');
+    const userId = btn.getAttribute('data-user-id');
+    const amount = btn.getAttribute('data-amount');
+    const billingCode = btn.getAttribute('data-billing');
+    const customerName = btn.getAttribute('data-customer');
+    
+    const modalHtml = `
+    <div id="manualPaymentModal" class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" dir="rtl">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-xs font-black text-white">💵 تأكيد استلام الدفع اليدوي</h3>
+                <button onclick="document.getElementById('manualPaymentModal').remove()" class="text-slate-500 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            <div class="bg-emerald-950/40 border border-emerald-800/50 p-3 rounded-lg text-xs text-right space-y-2">
+                <p class="text-emerald-400 font-bold">📋 تفاصيل الفاتورة:</p>
+                <p class="text-slate-300">العميل: <span class="text-white font-bold">${customerName}</span></p>
+                <p class="text-slate-300">المبلغ: <span class="text-rose-400 font-black text-lg">${amount} ج.م</span></p>
+                <p class="text-slate-300">كود التحصيل: <span class="text-amber-400 font-mono font-bold">${billingCode}</span></p>
+            </div>
+            <div class="space-y-1">
+                <label class="block text-[11px] font-bold text-slate-400">طريقة الدفع المستخدمة من العميل:</label>
+                <select id="payment_method" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none">
+                    <option value="Vodafone Cash">فودافون كاش (Vodafone Cash)</option>
+                    <option value="InstaPay">إنستا باي (InstaPay)</option>
+                    <option value="Etisalat Cash">اتصالات كاش (Etisalat Cash)</option>
+                    <option value="Orange Cash">أورنج كاش (Orange Cash)</option>
+                    <option value="We Pay">وي باي (We Pay)</option>
+                    <option value="Bank Transfer">تحويل بنكي</option>
+                    <option value="Cash">كاش (يدوي)</option>
+                </select>
+            </div>
+            <label class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg cursor-pointer">
+                <input type="checkbox" id="confirmCheck" class="w-4 h-4 accent-emerald-500">
+                <span class="text-xs text-slate-300">✅ أقر باستلام <strong class="text-rose-400">${amount} ج.م</strong> من <strong class="text-white">${customerName}</strong> وتفعيل الباقة فوراً.</span>
+            </label>
+            <button id="confirmBtn" onclick="executeManualPayment('${billingCode}', '${amount}', '${userId}')" 
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 rounded-lg shadow-lg shadow-emerald-600/20 transition-all mt-2">
+                🔓 تأكيد وتفعيل الباقة
+            </button>
+        </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function executeManualPayment(billingCode, amount, userId) {
+    if (!document.getElementById('confirmCheck').checked) {
+        alert('⚠️ يجب تأكيد استلام المبلغ أولاً.');
+        return;
+    }
+    
+    const paymentMethod = document.getElementById('payment_method').value;
+    const btn = document.getElementById('confirmBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ جاري التنفيذ...';
+    
+    // استدعاء Webhook الدفع مباشرة بكود التحصيل
+    fetch('/webhook/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            billing_code: billingCode,
+            amount: parseFloat(amount),
+            transaction_id: 'MANUAL-' + Date.now(),
+            payment_method: paymentMethod
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ تم تأكيد الدفع وتفعيل باقة العميل بنجاح!');
+            window.location.reload();
+        } else {
+            alert('⚠️ ' + data.message);
+            btn.disabled = false;
+            btn.textContent = '🔓 تأكيد وتفعيل الباقة';
+        }
+    })
+    .catch(err => {
+        alert('❌ خطأ في الاتصال: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '🔓 تأكيد وتفعيل الباقة';
+    });
+}
+
+// دالة الفرز والفلترة المزدوجة اللحظية (قطاع + حالة ماليّة) لمنع التداخل والوصول للمعلومات بسرعة
+function filterFinanceTable() {
+    const sectorValue = document.getElementById("sectorFilter").value;
+    const statusValue = document.getElementById("statusFilter").value;
+    const rows = document.querySelectorAll(".txn-row");
+    
+    rows.forEach(row => {
+        const rowType = row.getAttribute("data-type") || "";
+        const rowStatus = row.getAttribute("data-status") || "";
+        
+        const matchesSector = (sectorValue === "all" || rowType.includes(sectorValue));
+        const matchesStatus = (statusValue === "all" || rowStatus === statusValue);
+        
+        if (matchesSector && matchesStatus) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+
+// دالة التسديد اليدوي وفتح الباقة للعميل فوراً عبر الـ API المركزي في الباك إند
+function executeManualSettle(transactionId, clientName) {
+    if(confirm(`⚠️ تذكير مالي: هل أنت متأكد من تسوية المعاملة (${transactionId}) يدوياً للعميل (${clientName})؟\nهذا الإجراء سيقوم باعتماد الفاتورة كـ "مدفوعة" وإطلاق أمر فوري لسيرفر الراديوس لفتح الباقة تفعيل الخدمة للعميل.`)) {
+        
+        fetch(`/subscribers/renew/${transactionId}`, { method: 'POST' })
+            .then(response => {
+                if(response.ok) {
+                    alert('✅ تم تسديد الفاتورة يدوياً، وتحديث الدفتر، وتفعيل باقة العميل بنجاح.');
+                    window.location.reload();
+                } else {
+                    alert('❌ فشل تنفيذ الأمر من السيرفر المالي المركزي.');
+                }
+            })
+            .catch(() => {
+                alert('❌ خطأ: فشل الاتصال بالخلفية البرمجية للمركز.');
+            });
+    }
+}
+
+// دالة مراجعة وإعادة استدعاء الـ Webhook يدوياً للتحقق من بوابات الدفع المسجلة
+function executeWebhookRetry(transactionId) {
+    alert(`⏳ جاري فحص الـ Webhook وعمل مسح آلي لبوابة الدفع (Payment Gateway) للمعاملة رقم: ${transactionId}...`);
+    
+    fetch('/api/client/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: transactionId, action: 'retry_webhook', system: 'central' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            alert('✅ تم رصد إشارة الدفع المفقودة وتحديث حالة الدفتر وتفعيل الباقة تلقائياً.');
+            window.location.reload();
+        } else {
+            alert(`ℹ️ نتيجة الفحص: البوابة لم تؤكد استلام الأموال بعد أو الويب هوك معلق. رسالة السيرفر: ${data.message}`);
+        }
+    })
+    .catch(() => {
+        alert('❌ فشل الاتصال بـ API الفحص المركزي للبوابات.');
+    });
+}
+</script>
+{% endblock %}

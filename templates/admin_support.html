@@ -1,0 +1,130 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-end">
+    <div>
+        <h2 class="text-2xl font-black text-white">🎫 مركز الدعم الفني والتذاكر</h2>
+        <p class="text-sm text-slate-400 mt-1">إدارة ومراقبة طلبات ومشاكل العملاء والموزعين بشكل مركزي</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-[#0f172a] border border-rose-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-1 h-full bg-rose-500"></div>
+        <p class="text-xs text-slate-500 font-bold mb-1">تذاكر مفتوحة (بانتظار الرد)</p>
+        <h3 class="text-2xl font-black text-rose-400">{{ tickets | selectattr('status', 'equalto', 'open') | list | length }}</h3>
+    </div>
+    
+    <div class="bg-[#0f172a] border border-blue-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-1 h-full bg-blue-500"></div>
+        <p class="text-xs text-slate-500 font-bold mb-1">تذاكر قيد المراجعة</p>
+        <h3 class="text-2xl font-black text-blue-400">{{ tickets | selectattr('status', 'equalto', 'in_progress') | list | length }}</h3>
+    </div>
+
+    <div class="bg-[#0f172a] border border-emerald-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500"></div>
+        <p class="text-xs text-slate-500 font-bold mb-1">تذاكر تم حلها (مغلقة)</p>
+        <h3 class="text-2xl font-black text-emerald-400">{{ tickets | selectattr('status', 'equalto', 'closed') | list | length }}</h3>
+    </div>
+</div>
+
+<div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 mb-6 shadow-xl flex gap-2 overflow-x-auto text-sm font-bold">
+    <button onclick="filterTickets('all')" class="filter-btn active-filter bg-slate-800 text-white px-4 py-2 rounded-lg transition">الكل</button>
+    <button onclick="filterTickets('home')" class="filter-btn text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-2 rounded-lg transition">المنازل</button>
+    <button onclick="filterTickets('cafe')" class="filter-btn text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-2 rounded-lg transition">الكافيهات</button>
+    <button onclick="filterTickets('network')" class="filter-btn text-slate-400 hover:bg-slate-800 hover:text-white px-4 py-2 rounded-lg transition">الشبكات/الموزعين</button>
+</div>
+
+<div class="bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+    <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs">
+            <thead class="bg-[#151f32] text-slate-400 border-b border-slate-800">
+                <tr>
+                    <th class="p-4">رقم التذكرة</th>
+                    <th class="p-4">القطاع</th>
+                    <th class="p-4">عنوان الطلب / المشكلة</th>
+                    <th class="p-4">الأهمية</th>
+                    <th class="p-4">الحالة</th>
+                    <th class="p-4">تاريخ الفتح</th>
+                    <th class="p-4 text-center">الإجراء</th>
+                </tr>
+            </thead>
+            <tbody class="text-slate-300 divide-y divide-slate-800" id="ticketsTable">
+                {% for ticket in tickets %}
+                <tr class="hover:bg-slate-800/50 transition ticket-row" data-type="{{ ticket.user_type }}">
+                    <td class="p-4 font-mono text-white">#{{ ticket.id }}</td>
+                    
+                    <td class="p-4">
+                        {% if ticket.user_type == 'home' %}
+                            <span class="text-sky-400 bg-sky-400/10 px-2 py-1 rounded">🏠 منازل</span>
+                        {% elif ticket.user_type == 'cafe' %}
+                            <span class="text-amber-400 bg-amber-400/10 px-2 py-1 rounded">☕ كافيهات</span>
+                        {% elif ticket.user_type == 'network' %}
+                            <span class="text-purple-400 bg-purple-400/10 px-2 py-1 rounded">🌐 شبكات</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-4 font-bold text-white max-w-xs truncate">{{ ticket.subject }}</td>
+                    
+                    <td class="p-4">
+                        {% if ticket.priority == 'urgent' %}
+                            <span class="text-rose-500 bg-rose-500/10 px-2 py-1 rounded font-bold">عاجل 🚨</span>
+                        {% else %}
+                            <span class="text-slate-400 bg-slate-800 px-2 py-1 rounded">عادي</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-4">
+                        {% if ticket.status == 'open' %}
+                            <span class="text-rose-400 bg-rose-400/10 px-2 py-1 rounded">مفتوحة (جديدة)</span>
+                        {% elif ticket.status == 'in_progress' %}
+                            <span class="text-blue-400 bg-blue-400/10 px-2 py-1 rounded">قيد المراجعة</span>
+                        {% elif ticket.status == 'closed' %}
+                            <span class="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">مغلقة</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-4" dir="ltr">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    
+                    <td class="p-4 text-center">
+                        <a href="{{ url_for('support.admin_manage_ticket', ticket_id=ticket.id) }}" class="inline-block bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded shadow transition">
+                            مراجعة والرد
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="p-8 text-center text-slate-500 font-bold">
+                        لا توجد تذاكر دعم فني مسجلة حتى الآن.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// سكربت الفلترة السريعة
+function filterTickets(type) {
+    // تفعيل وتغيير لون الزر المختار
+    const buttons = document.querySelectorAll('.filter-btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'active-filter');
+        btn.classList.add('text-slate-400');
+    });
+    event.currentTarget.classList.remove('text-slate-400');
+    event.currentTarget.classList.add('bg-slate-800', 'text-white', 'active-filter');
+
+    // تصفية الصفوف
+    const rows = document.querySelectorAll('.ticket-row');
+    rows.forEach(row => {
+        if (type === 'all' || row.dataset.type === type) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

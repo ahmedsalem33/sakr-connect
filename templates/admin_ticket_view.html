@@ -1,0 +1,99 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 mb-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+        <div class="flex items-center gap-3 mb-2">
+            <h2 class="text-xl font-black text-white">تذكرة #{{ ticket.id }}: {{ ticket.subject }}</h2>
+            {% if ticket.priority == 'urgent' %}
+                <span class="text-xs font-bold text-rose-500 bg-rose-500/10 px-2 py-1 rounded">عاجل 🚨</span>
+            {% endif %}
+        </div>
+        <p class="text-sm text-slate-400 font-bold">
+            العميل: <span class="text-white">{{ client_name }}</span> | 
+            القطاع: 
+            {% if ticket.user_type == 'home' %} <span class="text-sky-400">منازل</span>
+            {% elif ticket.user_type == 'cafe' %} <span class="text-amber-400">كافيهات</span>
+            {% elif ticket.user_type == 'network' %} <span class="text-purple-400">شبكات</span>
+            {% endif %}
+        </p>
+    </div>
+    
+    <div class="flex items-center gap-3">
+        {% if ticket.status == 'open' %}
+            <span class="text-sm font-bold text-rose-400 border border-rose-400/30 bg-rose-400/10 px-4 py-2 rounded-lg">الحالة: مفتوحة (بانتظار الرد)</span>
+        {% elif ticket.status == 'in_progress' %}
+            <span class="text-sm font-bold text-blue-400 border border-blue-400/30 bg-blue-400/10 px-4 py-2 rounded-lg">الحالة: قيد المراجعة</span>
+        {% elif ticket.status == 'closed' %}
+            <span class="text-sm font-bold text-emerald-400 border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 rounded-lg">الحالة: مغلقة</span>
+        {% endif %}
+        
+        <a href="{{ url_for('support.admin_support') }}" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg transition text-sm">
+            العودة للقائمة
+        </a>
+    </div>
+</div>
+
+<div class="bg-[#0b111e] border border-slate-800 rounded-xl shadow-xl mb-6 h-[500px] flex flex-col relative overflow-hidden">
+    <div class="flex-1 overflow-y-auto p-6 space-y-6" id="chat-container">
+        {% for reply in replies %}
+            {% if reply.sender_type == 'user' %}
+                <div class="flex justify-start">
+                    <div class="max-w-[80%]">
+                        <div class="flex items-center gap-2 mb-1 px-1">
+                            <span class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">C</span>
+                            <span class="text-xs font-bold text-slate-400">{{ client_name }}</span>
+                            <span class="text-[10px] text-slate-500" dir="ltr">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <div class="bg-slate-800 text-slate-200 p-4 rounded-2xl rounded-tr-none text-sm leading-relaxed border border-slate-700/50 shadow-md whitespace-pre-wrap">{{ reply.message }}</div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="flex justify-end">
+                    <div class="max-w-[80%]">
+                        <div class="flex items-center justify-end gap-2 mb-1 px-1">
+                            <span class="text-[10px] text-slate-500" dir="ltr">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            <span class="text-xs font-bold text-blue-400">الإدارة المركزية (صقر ميديا)</span>
+                            <span class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white">A</span>
+                        </div>
+                        <div class="bg-blue-600/20 text-blue-100 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed border border-blue-500/30 shadow-md whitespace-pre-wrap">{{ reply.message }}</div>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="flex h-full items-center justify-center text-slate-500 font-bold text-sm">
+                لا توجد رسائل مسجلة في هذه التذكرة.
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if ticket.status != 'closed' %}
+<div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 shadow-xl">
+    <form action="{{ url_for('support.admin_manage_ticket', ticket_id=ticket.id) }}" method="POST" class="flex gap-4">
+        <textarea name="message" rows="2" placeholder="اكتب ردك هنا للعميل..." required class="flex-1 bg-[#0b111e] border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition resize-none"></textarea>
+        
+        <div class="flex flex-col gap-2 min-w-[120px]">
+            <button type="submit" name="action" value="reply" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-lg flex-1">
+                إرسال الرد
+            </button>
+            <button type="submit" name="action" value="close" class="bg-slate-700 hover:bg-emerald-600 text-slate-300 hover:text-white font-bold py-2 px-4 rounded-lg text-xs transition border border-slate-600 hover:border-emerald-500 flex-1" onclick="return confirm('هل أنت متأكد من حل المشكلة وإغلاق التذكرة نهائياً؟')">
+                إغلاق التذكرة
+            </button>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-5 text-center shadow-xl">
+    <p class="text-emerald-400 font-bold text-sm">✅ تم حل المشكلة وإغلاق هذه التذكرة. لا يمكن إرسال ردود جديدة.</p>
+</div>
+{% endif %}
+
+<script>
+    // التمرير التلقائي لأسفل المحادثة لرؤية أحدث الرسائل
+    const chatContainer = document.getElementById('chat-container');
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,399 @@
+{% extends "layout.html" %}
+{% block title %}إدارة وتوليد الكروت{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* استوديو المعاينة */
+    .live-card { 
+        width: 250px; height: 140px; background-color: #ffffff; background-size: cover; background-position: center; 
+        position: relative; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+        overflow: hidden; font-family: 'Cairo', sans-serif; margin: 0 auto;
+    }
+    
+    .draggable-item { 
+        position: absolute; cursor: move; color: #000; font-weight: bold; 
+        background: rgba(255,255,255,0.7); padding: 2px 6px; border-radius: 4px; 
+        border: 1px dashed #3b82f6; user-select: none; line-height: 1.2;
+    }
+    .draggable-item:hover { border-color: #ef4444; background: rgba(255,255,255,0.9); z-index: 10; }
+    
+    #preview-qr { width: 50px; height: 50px; background: #fff; padding: 2px; }
+    #preview-logo img { max-width: 40px; max-height: 40px; object-fit: contain; pointer-events: none; }
+
+    /* إعدادات الطباعة الاحترافية */
+    #printArea { display: none; }
+    @media print {
+        body * { visibility: hidden; }
+        #printArea, #printArea * { visibility: visible; }
+        #printArea { 
+            display: flex; flex-wrap: wrap; position: absolute; left: 0; top: 0; 
+            width: 100%; justify-content: center; align-content: flex-start; 
+        }
+        .page-break { page-break-after: always; width: 100%; height: 0; }
+        .printed-card { 
+            position: relative; border: 1px dashed #999; background-size: cover; 
+            background-position: center; page-break-inside: avoid; overflow: hidden; box-sizing: border-box;
+        }
+        .printed-item { position: absolute; color: #000; font-weight: bold; font-family: 'Cairo', sans-serif; line-height: 1.2; }
+        .printed-item img.logo-print { max-width: 40px; max-height: 40px; object-fit: contain; }
+    }
+</style>
+
+<div class="space-y-4 max-w-full mx-auto" dir="rtl">
+    
+    <div class="flex gap-2 border-b border-slate-700 pb-3">
+        <button class="tab-btn active bg-blue-600 text-white px-5 py-2 rounded text-sm font-bold shadow-md transition" onclick="switchTab('manageTab', this)">⚙️ الإدارة والتوليد</button>
+        <button class="tab-btn bg-slate-800 text-slate-400 hover:text-white px-5 py-2 rounded text-sm font-bold transition" onclick="switchTab('printTab', this)">🎨 استوديو الطباعة</button>
+    </div>
+
+    <div id="manageTab" class="tab-content active space-y-4">
+        
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-[10px] text-slate-400 mb-1">السيرفر</label>
+                <select id="genServer" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                    <option value="1">مازن-1</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[120px]">
+                <label class="block text-[10px] text-slate-400 mb-1">نوع الكارت</label>
+                <select id="genType" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                    <option value="pin_only">PIN فقط (رصيد/شحن)</option>
+                    <option value="user_pass">يوزر وباسورد (هوت سبوت)</option>
+                </select>
+            </div>
+            <div class="w-24">
+                <label class="block text-[10px] text-slate-400 mb-1">طول الكود</label>
+                <input type="number" id="genLength" value="10" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white text-center">
+            </div>
+            <div class="w-24">
+                <label class="block text-[10px] text-slate-400 mb-1">السعر (ج.م)</label>
+                <input type="number" id="genPrice" value="10" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white text-center">
+            </div>
+            <div class="w-24">
+                <label class="block text-[10px] text-slate-400 mb-1">الكمية</label>
+                <input type="number" id="genCount" value="50" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white text-center">
+            </div>
+            <button onclick="generateCardsAction()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-6 rounded text-xs transition h-[34px] shadow-md">
+                + توليد الحزمة
+            </button>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-slate-900 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-xs font-bold text-slate-300">سجل الحزم (Batches)</h3>
+                <input type="text" placeholder="بحث في الحزم..." class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white w-48">
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-center text-[11px] whitespace-nowrap">
+                    <thead class="bg-slate-800 text-slate-400 border-b border-slate-700">
+                        <tr>
+                            <th class="p-2 font-bold w-12">ID</th>
+                            <th class="p-2 font-bold text-right">النوع</th>
+                            <th class="p-2 font-bold">السعر</th>
+                            <th class="p-2 font-bold">الكمية</th>
+                            <th class="p-2 font-bold">السيرفر</th>
+                            <th class="p-2 font-bold">التاريخ</th>
+                            <th class="p-2 font-bold text-left">إجراءات التصدير والطباعة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchesTbody" class="divide-y divide-slate-700/50 text-slate-300">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="printTab" class="tab-content space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <div class="lg:col-span-4 bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-lg space-y-4 text-xs">
+                <div class="border-b border-slate-700 pb-2">
+                    <h3 class="font-bold text-amber-400">إعدادات الكارت والورقة</h3>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">اسم الشبكة</label>
+                    <input type="text" id="networkNameInput" placeholder="اكتب اسم الشبكة هنا..." oninput="updateNetworkName()" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white">
+                </div>
+
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[10px] text-slate-400 mb-1">الخلفية</label>
+                        <input type="file" accept="image/*" onchange="loadBg(this)" class="w-full text-[10px] text-slate-400 file:bg-slate-700 file:border-0 file:text-white file:px-2 file:py-1 file:rounded cursor-pointer">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] text-slate-400 mb-1">الشعار (Logo)</label>
+                        <input type="file" accept="image/*" onchange="loadLogo(this)" class="w-full text-[10px] text-slate-400 file:bg-slate-700 file:border-0 file:text-white file:px-2 file:py-1 file:rounded cursor-pointer">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">تقسيم الورقة (A4)</label>
+                    <select id="cardsPerPage" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white">
+                        <option value="21">21 كارت (3 أعمدة × 7 صفوف)</option>
+                        <option value="10">10 كروت (2 أعمدة × 5 صفوف) - حجم كبير</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5 bg-slate-900 p-2 rounded border border-slate-700 font-bold">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleEl('preview-code', this.checked)"> إظهار كود/يوزر</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="togglePass" checked onchange="toggleEl('preview-pass', this.checked)"> إظهار الباسورد (للهوت سبوت)</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleEl('preview-qr', this.checked)"> إظهار الباركود (QR)</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleEl('preview-price', this.checked)"> إظهار السعر</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleEl('preview-netname', this.checked)"> إظهار اسم الشبكة</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="toggleEl('preview-logo', this.checked)"> إظهار الشعار</label>
+                </div>
+
+                <button onclick="executePrint()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition shadow-md flex items-center justify-center gap-2 text-sm mt-2">
+                    🖨️ طباعة الحزمة المحددة
+                </button>
+            </div>
+
+            <div class="lg:col-span-8 bg-slate-900 border border-slate-700 rounded-lg p-6 shadow-inner flex flex-col items-center justify-center relative min-h-[300px]">
+                <span class="absolute top-2 right-3 text-[10px] text-slate-500 font-bold">اسحب العناصر لترتيب الكارت</span>
+                <div class="live-card" id="liveCard">
+                    <div class="draggable-item" id="preview-code" style="top: 35px; left: 80px; font-size: 14px;">PIN: 1234567890</div>
+                    <div class="draggable-item" id="preview-pass" style="top: 60px; left: 80px; font-size: 14px; display: none;">Pass: 1234</div>
+                    <div class="draggable-item" id="preview-price" style="top: 10px; right: 10px; font-size: 14px;">10 ج.م</div>
+                    <div class="draggable-item" id="preview-netname" style="top: 10px; left: 10px; font-size: 12px; color: #fff; background: rgba(0,0,0,0.5);">شبكات صقر</div>
+                    <div class="draggable-item" id="preview-logo" style="bottom: 10px; right: 10px; background: transparent; border: none; padding: 0;">
+                        <img src="" id="logoImg" style="display: none;">
+                    </div>
+                    <div class="draggable-item" id="preview-qr" style="top: 75px; left: 10px;"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="printArea"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// البيانات المؤقتة لمحاكاة الواجهة
+let activeBatchCards = [];
+let currentBgImage = "";
+let currentLogoImage = "";
+let demoQr = new QRCode(document.getElementById("preview-qr"), { text: "demo", width: 50, height: 50 });
+
+// التبويبات
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active', 'bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-800', 'text-slate-400');
+    });
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.remove('bg-slate-800', 'text-slate-400');
+    btn.classList.add('active', 'bg-blue-600', 'text-white');
+}
+
+// توليد الحزمة (محاكاة + واجهة)
+function generateCardsAction() {
+    const type = document.getElementById('genType').value;
+    const len = parseInt(document.getElementById('genLength').value);
+    const count = parseInt(document.getElementById('genCount').value);
+    const price = document.getElementById('genPrice').value;
+
+    if(count < 1) return alert('أدخل كمية صحيحة');
+
+    let batch = { id: Date.now().toString().slice(-4), type: type, price: price, count: count, cards: [] };
+    
+    for(let i=0; i<count; i++) {
+        let code = Math.random().toString().slice(2, 2+len);
+        let pass = type === 'user_pass' ? Math.random().toString().slice(2, 6) : "";
+        batch.cards.push({ code: code, pass: pass });
+    }
+
+    addBatchToTable(batch);
+    alert('تم توليد الحزمة بنجاح. يمكنك تصديرها أو إرسالها للطباعة.');
+}
+
+function addBatchToTable(batch) {
+    const tbody = document.getElementById('batchesTbody');
+    const typeText = batch.type === 'pin_only' ? '<span class="text-amber-400">PIN (شحن)</span>' : '<span class="text-emerald-400">يوزر وباسورد</span>';
+    
+    // تخزين البيانات في العنصر لسهولة الاسترجاع
+    const tr = document.createElement('tr');
+    tr.className = "hover:bg-slate-700/30";
+    tr.innerHTML = `
+        <td class="p-2 text-slate-400 font-mono">#${batch.id}</td>
+        <td class="p-2 text-right">${typeText}</td>
+        <td class="p-2 font-bold">${batch.price} ج.م</td>
+        <td class="p-2 text-blue-400 font-bold">${batch.count}</td>
+        <td class="p-2">مازن-1</td>
+        <td class="p-2 text-slate-500">الآن</td>
+        <td class="p-2 text-left flex items-center gap-1">
+            <button onclick='loadToPrint(${JSON.stringify(batch)})' class="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-[10px] transition" title="إرسال لاستوديو الطباعة">🖨️ طباعة</button>
+            <button onclick='exportRSC(${JSON.stringify(batch)})' class="bg-rose-600 hover:bg-rose-500 text-white px-2 py-1 rounded text-[10px] transition" title="سكريبت مايكروتيك">.rsc</button>
+            <button onclick='exportTXT(${JSON.stringify(batch)})' class="bg-slate-600 hover:bg-slate-500 text-white px-2 py-1 rounded text-[10px] transition" title="ملف نصي">.txt</button>
+            <button onclick='exportCSV(${JSON.stringify(batch)})' class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] transition" title="ملف إكسيل">.csv</button>
+        </td>
+    `;
+    tbody.prepend(tr);
+}
+
+// التصدير الخارجي
+function exportRSC(batch) {
+    let content = "/ip hotspot user\n";
+    batch.cards.forEach(c => {
+        if(batch.type === 'pin_only') content += `add name="${c.code}" password="${c.code}" profile="default" comment="Batch_${batch.id}"\n`;
+        else content += `add name="${c.code}" password="${c.pass}" profile="default" comment="Batch_${batch.id}"\n`;
+    });
+    saveAs(new Blob([content], {type: "text/plain;charset=utf-8"}), `Mikrotik_Batch_${batch.id}.rsc`);
+}
+
+function exportTXT(batch) {
+    let content = "";
+    batch.cards.forEach(c => {
+        content += batch.type === 'pin_only' ? `${c.code}\n` : `${c.code},${c.pass}\n`;
+    });
+    saveAs(new Blob([content], {type: "text/plain;charset=utf-8"}), `Cards_${batch.id}.txt`);
+}
+
+function exportCSV(batch) {
+    let content = batch.type === 'pin_only' ? "PIN,Price\n" : "Username,Password,Price\n";
+    batch.cards.forEach(c => {
+        content += batch.type === 'pin_only' ? `${c.code},${batch.price}\n` : `${c.code},${c.pass},${batch.price}\n`;
+    });
+    saveAs(new Blob([content], {type: "text/csv;charset=utf-8"}), `Cards_${batch.id}.csv`);
+}
+
+// نقل الحزمة للطباعة
+function loadToPrint(batch) {
+    activeBatchCards = batch.cards;
+    document.getElementById('preview-price').innerText = batch.price + " ج.م";
+    
+    const isUserPass = batch.type === 'user_pass';
+    document.getElementById('preview-code').innerText = isUserPass ? "User: " + batch.cards[0].code : "PIN: " + batch.cards[0].code;
+    
+    const passEl = document.getElementById('preview-pass');
+    const passToggle = document.getElementById('togglePass');
+    
+    if(isUserPass) {
+        passEl.innerText = "Pass: " + batch.cards[0].pass;
+        passEl.style.display = 'block';
+        passToggle.checked = true;
+        passToggle.parentElement.style.display = 'flex';
+    } else {
+        passEl.style.display = 'none';
+        passToggle.checked = false;
+        passToggle.parentElement.style.display = 'none';
+    }
+    
+    switchTab('printTab', document.querySelectorAll('.tab-btn')[1]);
+}
+
+// أدوات المعاينة والتصميم
+function loadBg(input) {
+    if (input.files && input.files[0]) {
+        let r = new FileReader();
+        r.onload = e => { currentBgImage = e.target.result; document.getElementById('liveCard').style.backgroundImage = `url(${currentBgImage})`; };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+function loadLogo(input) {
+    if (input.files && input.files[0]) {
+        let r = new FileReader();
+        r.onload = e => { 
+            currentLogoImage = e.target.result; 
+            const img = document.getElementById('logoImg');
+            img.src = currentLogoImage;
+            img.style.display = 'block';
+            document.getElementById('preview-logo').style.border = 'none';
+            document.getElementById('preview-logo').style.background = 'transparent';
+        };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+function updateNetworkName() {
+    const val = document.getElementById('networkNameInput').value;
+    document.getElementById('preview-netname').innerText = val || 'شبكات صقر';
+}
+function toggleEl(id, show) {
+    document.getElementById(id).style.display = show ? 'block' : 'none';
+}
+
+// Drag and Drop Logic
+document.querySelectorAll('.draggable-item').forEach(item => {
+    let isDragging = false, startX, startY, initialX, initialY;
+    item.addEventListener('mousedown', e => {
+        isDragging = true; startX = e.clientX; startY = e.clientY;
+        initialX = item.offsetLeft; initialY = item.offsetTop;
+    });
+    document.addEventListener('mousemove', e => {
+        if(!isDragging) return;
+        item.style.left = `${initialX + (e.clientX - startX)}px`;
+        item.style.top = `${initialY + (e.clientY - startY)}px`;
+    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+});
+
+// الطباعة
+function executePrint() {
+    if(activeBatchCards.length === 0) return alert("قم باختيار حزمة للطباعة أولاً من تبويب الإدارة.");
+    
+    const printArea = document.getElementById('printArea');
+    const layoutType = parseInt(document.getElementById('cardsPerPage').value);
+    
+    // إعدادات المقاسات بناءً على الاختيار
+    let cardWidth, cardHeight, gap, cardsPerRow;
+    if(layoutType === 21) { cardWidth = '31%'; cardHeight = '130px'; gap = '1%'; cardsPerRow = 3; } 
+    else { cardWidth = '48%'; cardHeight = '180px'; gap = '2%'; cardsPerRow = 2; }
+
+    let html = `<div style="display:flex; flex-wrap:wrap; gap:${gap}; row-gap:15px; width:100%; justify-content:center; padding:10px;">`;
+    
+    const st = {
+        code: document.getElementById('preview-code').style,
+        pass: document.getElementById('preview-pass').style,
+        price: document.getElementById('preview-price').style,
+        net: document.getElementById('preview-netname').style,
+        logo: document.getElementById('preview-logo').style,
+        qr: document.getElementById('preview-qr').style
+    };
+
+    activeBatchCards.forEach((card, index) => {
+        if (index > 0 && index % layoutType === 0) {
+            html += `</div><div class="page-break"></div><div style="display:flex; flex-wrap:wrap; gap:${gap}; row-gap:15px; width:100%; justify-content:center; padding:10px;">`;
+        }
+        
+        let bgStyle = currentBgImage ? `background-image: url('${currentBgImage}'); border: none;` : '';
+        const isUserPass = card.pass !== "";
+        const codeText = isUserPass ? `User: ${card.code}` : `PIN: ${card.code}`;
+
+        html += `<div class="printed-card" style="${bgStyle} width:${cardWidth}; height:${cardHeight}; border-radius:4px;">`;
+        if(st.code.display !== 'none') html += `<div class="printed-item" style="top:${st.code.top}; left:${st.code.left}; font-size:${st.code.fontSize};">${codeText}</div>`;
+        if(isUserPass && st.pass.display !== 'none') html += `<div class="printed-item" style="top:${st.pass.top}; left:${st.pass.left}; font-size:${st.pass.fontSize};">Pass: ${card.pass}</div>`;
+        if(st.price.display !== 'none') html += `<div class="printed-item" style="top:${st.price.top}; left:${st.price.left}; font-size:${st.price.fontSize};">${document.getElementById('preview-price').innerText}</div>`;
+        if(st.net.display !== 'none') html += `<div class="printed-item" style="top:${st.net.top}; left:${st.net.left}; font-size:${st.net.fontSize}; color:${st.net.color}; background:${st.net.background}; padding:2px 4px; border-radius:2px;">${document.getElementById('preview-netname').innerText}</div>`;
+        if(currentLogoImage && st.logo.display !== 'none') html += `<div class="printed-item" style="top:${st.logo.top}; left:${st.logo.left};"><img src="${currentLogoImage}" class="logo-print"></div>`;
+        if(st.qr.display !== 'none') html += `<div class="printed-item print-qr" id="print-qr-${index}" style="top:${st.qr.top}; left:${st.qr.left};"></div>`;
+        html += `</div>`;
+    });
+
+    html += `</div>`;
+    printArea.innerHTML = html;
+
+    if(st.qr.display !== 'none') {
+        activeBatchCards.forEach((card, index) => {
+            new QRCode(document.getElementById(`print-qr-${index}`), {
+                text: card.code, width: 45, height: 45, colorDark: "#000", colorLight: "#fff"
+            });
+        });
+    }
+
+    setTimeout(() => { window.print(); }, 800);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto p-4 md:p-6 text-right" dir="rtl">
+    
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-800 pb-5 gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-white flex items-center gap-3">
+                <span class="text-blue-500 bg-blue-500/10 p-2 rounded-xl">🦅</span> 
+                مركز السيطرة الشامل (God Mode)
+            </h1>
+            <p class="text-slate-400 text-sm mt-2 font-medium">التحكم المركزي في بنية المنظومة، فريق العمل، والحماية.</p>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            <span class="bg-gradient-to-r from-blue-600 to-blue-400 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 tracking-wider">Sakr Connect V2.0</span>
+        </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        
+        <div class="w-full lg:w-72 bg-[#0f172a] border border-slate-800 rounded-2xl p-4 h-fit shrink-0 shadow-2xl">
+            <h2 class="text-xs font-black text-slate-500 mb-4 pr-2 uppercase tracking-wider">وحدات التحكم الأساسية</h2>
+            <ul class="space-y-1.5 text-sm font-bold" id="settings-tabs">
+                <li><button onclick="switchTab('dashboard')" id="btn-dashboard" class="tab-btn active-tab w-full text-right p-3.5 rounded-xl text-blue-400 bg-blue-500/10 border border-blue-500/20">📊 الرادار الحي</button></li>
+                <li><button onclick="switchTab('branding')" id="btn-branding" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800">🎨 الهوية البصرية</button></li>
+                <li><button onclick="switchTab('security')" id="btn-security" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800">🛡️ الجدار الناري</button></li>
+                <li><button onclick="switchTab('radius')" id="btn-radius" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800">📡 الراديوس</button></li>
+                <li><button onclick="switchTab('cron')" id="btn-cron" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800">⏳ المهام الآلية</button></li>
+                <li><button onclick="switchTab('rbac')" id="btn-rbac" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800 flex justify-between items-center"><span>👥 إدارة المديرين</span> <span class="bg-slate-700 text-white text-[10px] px-2 py-0.5 rounded-lg">{{ admin_staff|length }}</span></button></li>
+                <li><button onclick="switchTab('backup')" id="btn-backup" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800">💾 النسخ والاستعادة</button></li>
+            </ul>
+        </div>
+
+        <div class="flex-1 bg-[#0f172a] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl relative min-h-[600px]">
+            
+            <form action="{{ url_for('settings.update_global_settings') }}" method="POST" id="global-settings-form">
+                
+                <div id="tab-dashboard" class="tab-content block space-y-6">
+                    <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">📊 الرادار الحي للخادم</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div class="bg-[#0b111e] p-6 rounded-2xl border border-slate-700/50">
+                            <span class="text-slate-400 text-sm font-bold block mb-2">استهلاك المعالج (CPU)</span>
+                            <div class="text-4xl font-black text-blue-400 font-mono">{{ cpu_usage or '0' }}%</div>
+                        </div>
+                        <div class="bg-[#0b111e] p-6 rounded-2xl border border-slate-700/50">
+                            <span class="text-slate-400 text-sm font-bold block mb-2">الذاكرة (RAM)</span>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-4xl font-black text-amber-400 font-mono">{{ ram_used or '0' }}</span>
+                                <span class="text-sm font-bold text-slate-500">من {{ ram_total or '0' }} GB</span>
+                            </div>
+                        </div>
+                        <div class="bg-[#0b111e] p-6 rounded-2xl border border-slate-700/50">
+                            <span class="text-slate-400 text-sm font-bold block mb-2">الموزعين النشطين</span>
+                            <div class="text-4xl font-black text-emerald-400 font-mono">{{ active_resellers_count or '0' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-branding" class="tab-content hidden space-y-6">
+                    <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">🎨 الهوية البصرية الأساسية</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">اسم النظام (Brand Name)</label>
+                            <input type="text" name="system_name" value="{{ settings.system_name or '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">اللون الأساسي</label>
+                            <input type="text" name="primary_color" value="{{ settings.primary_color or '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-security" class="tab-content hidden space-y-6">
+                    <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">🛡️ الجدار الناري والأمان</h3>
+                    <div class="bg-rose-950/20 border border-rose-900/40 p-6 rounded-2xl flex justify-between items-center mb-6">
+                        <div>
+                            <span class="text-rose-400 font-black text-md block">وضع الصيانة (Maintenance Mode)</span>
+                            <span class="text-rose-500/70 text-xs font-bold">إغلاق الموقع باستثناء الإدارة</span>
+                        </div>
+                        <input type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %} class="w-6 h-6 accent-rose-600">
+                    </div>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">القائمة البيضاء للـ IPs المسموحة</label>
+                            <textarea name="ip_whitelist" rows="3" placeholder="192.168.1.1" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-mono text-sm outline-none">{{ settings.ip_whitelist or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-radius" class="tab-content hidden space-y-6">
+                    <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">📡 بروتوكول الراديوس</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <input type="number" name="radius_auth_port" value="{{ settings.radius_auth_port or '1812' }}" placeholder="Auth Port" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none">
+                        <input type="number" name="radius_acct_port" value="{{ settings.radius_acct_port or '1813' }}" placeholder="Acct Port" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none">
+                        <input type="text" name="radius_secret" value="{{ settings.radius_secret or '' }}" placeholder="Shared Secret" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none">
+                    </div>
+                </div>
+
+                <div id="tab-cron" class="tab-content hidden space-y-6">
+                    <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">⏳ المهام الآلية (Cron)</h3>
+                    <div class="bg-[#0b111e] p-6 rounded-2xl border border-slate-700 flex justify-between items-center">
+                        <span class="text-white font-black text-md">تفعيل الإيقاف التلقائي للمشتركين (Auto-Suspend)</span>
+                        <input type="checkbox" name="cron_auto_suspend" {% if settings.cron_auto_suspend %}checked{% endif %} class="w-6 h-6 accent-emerald-500">
+                    </div>
+                </div>
+
+                <div class="mt-10 pt-5 border-t border-slate-800 flex justify-end" id="global-save-btn">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-3.5 rounded-xl font-black shadow-xl">
+                        💾 حفظ الإعدادات
+                    </button>
+                </div>
+            </form>
+
+            <div id="tab-rbac" class="tab-content hidden space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <h3 class="text-xl font-black text-white">👥 إدارة المديرين</h3>
+                    <button type="button" onclick="openModal('add-manager-modal')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-black text-sm">
+                        + مسؤول جديد
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-6">
+                    {% for admin in admin_staff %}
+                    <div class="bg-[#0b111e] p-6 rounded-2xl border border-slate-700 relative">
+                        <div class="absolute top-6 left-6">
+                            <form action="{{ url_for('settings.delete_manager', user_id=admin.id) }}" method="POST" onsubmit="return confirm('تأكيد حذف المسؤول؟');">
+                                <button type="submit" class="text-rose-500 hover:text-white bg-rose-500/10 p-2 rounded-lg font-bold">🗑️</button>
+                            </form>
+                        </div>
+
+                        <form action="{{ url_for('settings.update_admin_permissions', user_id=admin.id) }}" method="POST">
+                            <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+                                <div>
+                                    <span class="text-white font-black text-lg block">{{ admin.fullname }}</span>
+                                    <span class="text-slate-500 text-sm font-mono block">@{{ admin.username }}</span>
+                                </div>
+                                <input type="password" name="new_password" placeholder="تغيير الباسورد" class="bg-[#0f172a] border border-slate-600 rounded-xl p-2.5 text-sm text-white outline-none w-48">
+                            </div>
+
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-bold text-slate-300 mb-4 bg-[#0f172a] p-4 rounded-xl border border-slate-800">
+                                <label><input type="checkbox" name="can_finance" {% if admin.can_finance %}checked{% endif %} class="accent-emerald-500"> مالية</label>
+                                <label><input type="checkbox" name="can_routers" {% if admin.can_routers %}checked{% endif %} class="accent-blue-500"> روترات</label>
+                                <label><input type="checkbox" name="can_users" {% if admin.can_users %}checked{% endif %} class="accent-amber-500"> مشتركين</label>
+                                <label><input type="checkbox" name="can_settings" {% if admin.can_settings %}checked{% endif %} class="accent-red-500"> إعدادات</label>
+                                <label><input type="checkbox" name="can_logs" {% if admin.can_logs %}checked{% endif %} class="accent-slate-500"> سجلات</label>
+                                <label><input type="checkbox" name="can_backup" {% if admin.can_backup %}checked{% endif %} class="accent-indigo-500"> نسخ احتياطي</label>
+                            </div>
+                            
+                            <div class="text-right">
+                                <button type="submit" class="bg-slate-700 hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl font-black text-sm">حفظ التعديلات</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="text-slate-500 text-sm text-center py-8">لا يوجد مسؤولين مسجلين.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div id="tab-backup" class="tab-content hidden space-y-6">
+                <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">💾 مركز النسخ والاستعادة</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-blue-900/20 border border-blue-500/30 p-6 rounded-2xl text-center">
+                        <h4 class="text-blue-400 font-black text-lg mb-4">أخذ نسخة احتياطية (Download)</h4>
+                        <form action="{{ url_for('settings.download_backup') }}" method="POST">
+                            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl">📥 تحميل ملف (.db)</button>
+                        </form>
+                    </div>
+                    
+                    <div class="bg-emerald-900/20 border border-emerald-500/30 p-6 rounded-2xl text-center">
+                        <h4 class="text-emerald-400 font-black text-lg mb-4">استعادة قاعدة البيانات (Restore)</h4>
+                        <form action="{{ url_for('settings.restore_backup') }}" method="POST" enctype="multipart/form-data">
+                            <input type="file" name="backup_file" accept=".db" required class="w-full text-slate-400 text-sm mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-emerald-600 file:text-white">
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl" onclick="return confirm('تحذير: سيتم استبدال قاعدة البيانات الحالية بالكامل. هل أنت متأكد؟');">🔄 استعادة النسخة</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="add-manager-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-md p-8 rounded-3xl text-right">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+            <h3 class="text-white font-black text-xl">➕ مسؤول نظام جديد</h3>
+            <button type="button" onclick="closeModal('add-manager-modal')" class="text-rose-500 text-2xl font-black">✕</button>
+        </div>
+        <form action="{{ url_for('settings.add_new_manager') }}" method="POST" class="space-y-4">
+            <input type="text" name="fullname" placeholder="الاسم الكامل" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white">
+            <input type="text" name="username" placeholder="اسم المستخدم" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-mono">
+            <input type="password" name="password" placeholder="كلمة المرور" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white">
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeModal('add-manager-modal')" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold">إلغاء</button>
+                <button type="submit" class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-black">إضافة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => { el.classList.add('hidden'); el.classList.remove('block'); });
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.classList.remove('text-blue-400', 'bg-blue-500/10', 'border-blue-500/20', 'active-tab');
+            el.classList.add('text-slate-400');
+        });
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        document.getElementById('tab-' + tabId).classList.add('block');
+        
+        let targetBtn = document.getElementById('btn-' + tabId);
+        if (targetBtn) {
+            targetBtn.classList.remove('text-slate-400');
+            targetBtn.classList.add('text-blue-400', 'bg-blue-500/10', 'border-blue-500/20', 'active-tab');
+        }
+
+        let globalSaveBtn = document.getElementById('global-save-btn');
+        if (globalSaveBtn) {
+            if (tabId === 'rbac' || tabId === 'backup') {
+                globalSaveBtn.classList.add('hidden');
+            } else {
+                globalSaveBtn.classList.remove('hidden');
+            }
+        }
+    }
+    function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+    function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+</script>
+{% endblock %}

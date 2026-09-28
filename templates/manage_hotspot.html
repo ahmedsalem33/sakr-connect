@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<div class="space-y-6" dir="rtl">
+
+    <div class="border-b border-slate-800">
+        <nav class="flex gap-4" aria-label="Tabs">
+            <button onclick="switchTab('cafesTab')" id="btn-cafesTab" class="tab-button active px-4 py-3 text-sm font-bold text-blue-400 border-b-2 border-blue-500 hover:text-blue-300 transition">
+                ☕ شبكة الكافيهات (NOC)
+            </button>
+            <button onclick="switchTab('packagesTab')" id="btn-packagesTab" class="tab-button px-4 py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-200 hover:border-slate-600 transition">
+                📦 إدارة باقات الكافيهات
+            </button>
+        </nav>
+    </div>
+
+    <div id="cafesTab" class="tab-content block">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <a href="?filter=active" class="bg-[#0f172a] border {% if current_filter == 'active' %}border-emerald-500 bg-emerald-950/20{% else %}border-slate-800{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-emerald-500 transition group">
+                <div>
+                    <p class="text-xs font-bold text-slate-500 mb-1 group-hover:text-emerald-400 transition">الكافيهات النشطة</p>
+                    <h3 class="text-2xl font-black text-emerald-400">{{ active_cafes_count | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">☕</div>
+            </a>
+            <a href="?filter=high_debt" class="bg-[#0f172a] border {% if current_filter == 'high_debt' %}border-rose-500 bg-rose-950/20{% else %}border-rose-900/50{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-rose-500 transition group">
+                <div>
+                    <p class="text-xs font-bold text-rose-500 mb-1 group-hover:text-rose-400 transition">تجاوز الحد الائتماني 🚨</p>
+                    <h3 class="text-2xl font-black text-rose-400">{{ high_debt_count | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">📉</div>
+            </a>
+            <a href="?filter=inactive" class="bg-[#0f172a] border {% if current_filter == 'inactive' %}border-amber-500 bg-amber-950/20{% else %}border-amber-900/50{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-amber-500 transition group">
+                <div>
+                    <p class="text-xs font-bold text-amber-500 mb-1 group-hover:text-amber-400 transition">غير نشط (للمتابعة) ⚠️</p>
+                    <h3 class="text-2xl font-black text-amber-400">{{ inactive_cafes_count | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">⏸️</div>
+            </a>
+            <a href="?filter=all" class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-blue-500 transition group">
+                <div>
+                    <p class="text-xs font-bold text-slate-500 mb-1 group-hover:text-blue-400 transition">إجمالي التحصيلات الكلية</p>
+                    <h3 class="text-2xl font-black text-blue-400">{{ total_revenue | default(0) }} <span class="text-xs">EGP</span></h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">💰</div>
+            </a>
+        </div>
+
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex flex-wrap justify-between items-center bg-[#151f32] gap-4">
+                <h2 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                    <span class="text-emerald-500">🌍</span> جدول الكافيهات
+                </h2>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <div class="relative w-full md:w-80">
+                        <input type="text" id="advancedCafeSearch" onkeyup="searchCafes()" placeholder="بحث بالاسم، التليفون، أو المديونية..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg pr-10 pl-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition">
+                        <span class="absolute right-3 top-2.5 text-slate-500">🔍</span>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-xs" id="cafesTable">
+                    <thead class="bg-[#0b111e] text-slate-500 border-b border-slate-800">
+                        <tr>
+                            <th class="py-4 px-4 font-bold">معرف الكافيه / المسؤول</th>
+                            <th class="py-4 px-4 font-bold">الباقة المحددة</th>
+                            <th class="py-4 px-4 font-bold text-emerald-400">إجمالي المسحوبات</th>
+                            <th class="py-4 px-4 font-bold text-rose-400">المديونية (الخطر)</th>
+                            <th class="py-4 px-4 font-bold text-center">الحالة اللحظية</th>
+                            <th class="py-4 px-4 font-bold text-center">إجراءات سيادية</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50">
+                        {% for cafe in cafes %}
+                        <tr class="hover:bg-slate-800/40 transition cafe-row">
+                            <td class="py-3 px-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold">{{ cafe.fullname[0] if cafe.fullname else 'C' }}</div>
+                                    <div>
+                                        <p class="font-bold text-slate-200 cafe-name">{{ cafe.fullname }}</p>
+                                        <p class="text-[10px] text-blue-400 font-mono mt-0.5 cafe-phone">ID: {{ cafe.username }} | كود: {{ cafe.display_billing_code }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 text-slate-300 font-mono">{{ cafe.dynamic_package_name }}</td>
+                            <td class="py-3 px-4 text-emerald-400 font-bold">{{ cafe.profit_value | default(0) }} EGP</td>
+                            <td class="py-3 px-4 font-bold cafe-debt {% if cafe.debt > 1000 %}text-rose-500{% else %}text-amber-500{% endif %}">{{ cafe.debt | default(0) }} EGP</td>
+                            <td class="py-3 px-4 text-center">
+                                {% if cafe.is_active %}
+                                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> نشط (متصل)</span>
+                                {% else %}
+                                    <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-1 rounded-md text-[10px] font-bold inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> موقوف</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="openMasterCafeModal('{{ cafe.id }}', '{{ cafe.fullname }}', '{{ cafe.username }}', '{{ cafe.debt | default(0) }}', '{{ cafe.is_active }}', '{{ cafe.display_billing_code }}')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-5 py-2 rounded-lg transition-all text-xs font-bold shadow-md w-full sm:w-auto">
+                                    تحكم شامل ⚙️
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="py-12 text-center"><p class="text-slate-400 font-bold text-sm">لا توجد بيانات مسجلة.</p></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="packagesTab" class="tab-content hidden">
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg mb-6 p-5 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 bg-blue-500 h-full"></div>
+            <h3 class="text-sm font-bold text-slate-200 mb-4 flex items-center gap-2">
+                <span class="text-blue-400 text-lg">☁️</span> رفع ملفات النظام المركزية للكافيهات
+            </h3>
+            <form action="{{ url_for('subscribers.upload_system_files') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input type="hidden" name="system_type" value="cafe">
+                
+                <div class="bg-[#151f32] p-4 rounded-lg border border-slate-700 hover:border-amber-500/50 transition">
+                    <label class="block text-amber-400 font-bold mb-2 text-xs">🌐 قالب الهوت سبوت المركزي (ZIP/RAR)</label>
+                    <input type="file" name="hotspot_file" accept=".zip,.rar" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white text-xs file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer">
+                </div>
+
+                <div class="bg-[#151f32] p-4 rounded-lg border border-slate-700 hover:border-emerald-500/50 transition">
+                    <label class="block text-emerald-400 font-bold mb-2 text-xs">📱 تطبيق الكافيهات المركزي (APK)</label>
+                    <input type="file" name="app_file" accept=".apk" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white text-xs file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
+                </div>
+
+                <div class="md:col-span-2 flex justify-end mt-2">
+                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-2">
+                        رفع وتحديث الملفات
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-black text-slate-200">📦 خطط وباقات إدارة الكافيهات (Hotspot SaaS)</h2>
+            <button onclick="openPackageModal('add')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)] transition transform hover:-translate-y-0.5">
+                + إضافة باقة كافيهات جديدة
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for pkg in packages %}
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl shadow-xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 group flex flex-col">
+                <div class="p-6 border-b border-slate-800 bg-gradient-to-b from-[#151f32] to-[#0f172a] relative">
+                    {% if pkg.is_active %}
+                        <span class="absolute top-4 left-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">نشطة</span>
+                    {% else %}
+                        <span class="absolute top-4 left-4 bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">معطلة</span>
+                    {% endif %}
+                    <h3 class="text-xl font-black text-white mb-2 group-hover:text-blue-400 transition-colors">{{ pkg.name }}</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-emerald-400 font-mono">{{ pkg.price }}</span>
+                        <span class="text-xs text-slate-500 font-bold">{{ pkg.currency }} / {{ pkg.duration_months }} شهر</span>
+                    </div>
+                </div>
+                
+                <div class="p-6 flex-grow">
+                    <ul class="space-y-3.5 text-xs font-bold text-slate-300">
+                        <li class="flex items-center gap-3">
+                            <span class="text-emerald-400 w-4 text-center">⚡</span>
+                            <span>الحد الأقصى للمشتركين: <span class="text-white">{{ pkg.max_subscribers }}</span> مشترك نشط</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="text-amber-400 w-4 text-center">🎫</span>
+                            <span>كروت الطباعة المتاحة شهرياً: <span class="text-white">{{ pkg.max_vouchers }}</span> كارت</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="text-rose-400 w-4 text-center">🎯</span>
+                            <span>إنشاء وتعديل العروض: حتى <span class="text-white">{{ pkg.max_offers }}</span> عرض</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="text-cyan-400 w-4 text-center">🎨</span>
+                            <span>تصاميم كروت مخصصة: <span class="text-white">{{ pkg.max_designs | default(0) }}</span> تصميم متاح</span>
+                        </li>
+                        
+                        <li class="border-t border-slate-800 my-2 pt-2"></li>
+                        
+                        <li class="flex items-center gap-3">
+                            {% if pkg.hotspot_file == 'active' %}
+                                <span class="text-amber-400 w-4 text-center">🌐</span><span class="text-amber-400">قالب هوت سبوت مركزي مفعل</span>
+                            {% else %}
+                                <span class="text-slate-600 w-4 text-center">🌐</span><span class="text-slate-500 line-through decoration-slate-600">قالب الهوت سبوت غير مفعل</span>
+                            {% endif %}
+                        </li>
+                        <li class="flex items-center gap-3">
+                            {% if pkg.app_access %}
+                                <span class="text-emerald-400 w-4 text-center">📱</span><span class="text-emerald-400">تطبيق صقر كونكت للكافيه مفعل</span>
+                            {% else %}
+                                <span class="text-slate-600 w-4 text-center">📱</span><span class="text-slate-500 line-through decoration-slate-600">تطبيق صقر كونكت غير مفعل</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="p-4 border-t border-slate-800 bg-[#0b111e] flex justify-between items-center mt-auto">
+                    <button onclick="deletePackage('{{ pkg.id }}')" class="flex items-center gap-1.5 px-3 py-1.5 text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg transition text-xs font-bold">
+                        حذف
+                    </button>
+                    <button onclick="openPackageModal('edit', '{{ pkg.id }}', '{{ pkg.name }}', '{{ pkg.price }}', '{{ pkg.max_subscribers }}', '{{ pkg.max_offers }}', '{{ pkg.max_vouchers }}', '{{ pkg.max_designs }}', '{{ pkg.duration_months }}', '{{ pkg.is_active }}', '{{ pkg.hotspot_file }}', '{{ pkg.app_access }}', '{{ pkg.notes }}', '{{ pkg.max_servers }}', '{{ pkg.max_resellers }}', '{{ pkg.country }}', '{{ pkg.currency }}')" class="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition text-xs font-bold border border-blue-600/30">
+                        تعديل الباقة
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-1 md:col-span-2 lg:col-span-3 py-16 text-center bg-[#0f172a] rounded-2xl border border-slate-800">
+                <div class="text-6xl mb-4 opacity-40">📦</div>
+                <p class="text-slate-400 font-black text-sm">لا توجد باقات كافيهات مضافة حتى الآن. اضغط بالأعلى لإضافة باقتك الأولى.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="masterCafeModal" class="fixed inset-0 bg-black/80 hidden z-[50] justify-center items-start overflow-y-auto pt-10 pb-10 backdrop-blur-sm transition-all" dir="rtl">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl overflow-hidden relative mt-10">
+        <div class="bg-[#151f32] p-4 border-b border-slate-700 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h2 class="text-lg font-black text-white flex items-center gap-2">
+                    <i class="fa-solid fa-mug-hot text-blue-500"></i> إدارة الكافيه: <span id="modalCafeNameTitle"></span>
+                </h2>
+                <div class="flex items-center gap-3 mt-2">
+                    <span id="modalCafeUsername" class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">يوزر</span>
+                    <span id="modalCafeBilling" class="text-xs font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded select-all">كود التحصيل</span>
+                    <span id="modalCafeStatus" class="px-2 py-0.5 rounded text-[10px] font-bold border">حالة</span>
+                </div>
+            </div>
+            <button onclick="closeMasterCafeModal()" class="text-slate-400 hover:text-rose-400 text-3xl font-black focus:outline-none">&times;</button>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-rose-900/10 border border-rose-500/20 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-rose-400 mb-1">المديونية (الحد الائتماني)</p>
+                        <h4 class="text-xl font-black text-rose-500" dir="ltr"><span id="modalCafeDebt">0</span> EGP</h4>
+                    </div>
+                    <button onclick="triggerManualPaymentFromModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-600/20">شحن / تسديد</button>
+                </div>
+                
+                <div class="bg-[#0b111e] border border-slate-700 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-slate-400 mb-1">صلاحيات لوحة الكافيه</p>
+                        <p class="text-[10px] text-slate-500">الدخول للوحة كصاحب كافيه</p>
+                    </div>
+                    <a id="btnImpersonateCafe" href="#" class="bg-amber-600/20 hover:bg-amber-600 border border-amber-500/50 text-amber-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition">دخول للإدارة 🔑</a>
+                </div>
+            </div>
+
+            <h3 class="text-sm font-black text-slate-300 border-b border-slate-700 pb-2 text-right mt-6">القرارات السيادية وإدارة الحساب</h3>
+            <div class="flex flex-wrap gap-3">
+                <button onclick="triggerCafeAction('change_password')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center w-full sm:w-auto">تغيير باسوورد الإدارة</button>
+                <button onclick="triggerCafeAction('toggle_status')" id="modalCafeToggleBtn" class="bg-slate-800 hover:bg-amber-600 border border-slate-700 hover:border-amber-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center w-full sm:w-auto sm:ml-auto">إيقاف / تفعيل الحساب</button>
+                <button onclick="triggerCafeAction('delete')" class="bg-red-950 hover:bg-red-700 border border-red-900 text-red-500 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center w-full sm:w-auto">حذف الكافيه نهائياً 🗑️</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="paymentModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-xl w-96 p-6">
+        <h3 class="text-white font-bold mb-4">شحن رصيد / تسديد مديونية الكافيه</h3>
+        <form action="/manage/client/payment" method="POST">
+            <input type="hidden" name="client_id" id="pay_id" value="">
+            <input type="hidden" name="system_type" value="cafe">
+            <div class="space-y-4 text-xs font-bold mb-4">
+                <input type="number" step="0.01" name="amount" required placeholder="أدخل القيمة المالية..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg p-2.5 text-white outline-none focus:border-emerald-500 text-center text-lg">
+                <select name="transaction_type" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg p-2.5 text-white outline-none focus:border-emerald-500">
+                    <option value="add_balance">إيداع مباشر لمحفظة الكافيه</option>
+                    <option value="settle_debt">تسديد المديونية المتأخرة فوراً</option>
+                </select>
+                <select name="payment_method" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg p-2.5 text-white outline-none focus:border-emerald-500">
+                    <option value="Vodafone Cash">فودافون كاش</option>
+                    <option value="InstaPay">إنستاباي</option>
+                    <option value="Etisalat Cash">اتصالات كاش</option>
+                    <option value="Orange Cash">أورنج كاش</option>
+                    <option value="We Pay">وي باي</option>
+                    <option value="Bank Transfer">تحويل بنكي</option>
+                    <option value="Cash Manual">كاش يدوي (أدمن)</option>
+                    <option value="PayPal">PayPal (دولي)</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeManualPayment()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-bold transition">إلغاء</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-bold shadow-lg shadow-emerald-600/30 transition">تأكيد الدفع</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast-container-local" class="fixed bottom-5 left-5 z-[70] space-y-2"></div>
+
+<div id="packageModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-xl w-full max-w-2xl mx-4 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-[#151f32] sticky top-0 z-10">
+            <h3 id="modalTitle" class="text-white font-bold text-sm">إضافة باقة كافيهات جديدة</h3>
+            <button onclick="closePackageModal()" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <form action="{{ url_for('subscribers.save_package') }}" method="POST" class="p-6">
+            <input type="hidden" name="system_type" value="cafe">
+            <input type="hidden" id="pkg_id" name="package_id" value="">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">اسم الخطة</label>
+                    <input type="text" id="pkg_name" name="name" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">السعر</label>
+                    <input type="number" id="pkg_price" name="price" step="0.01" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">الدولة</label>
+                    <select id="pkg_country" name="country" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                        <option value="EG">مصر (EGP)</option>
+                        <option value="INT">دولي (USD)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">العملة</label>
+                    <select id="pkg_currency" name="currency" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                        <option value="EGP">EGP (جنيه مصري)</option>
+                        <option value="USD">USD (دولار أمريكي)</option>
+                    </select>
+                </div>
+                
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-emerald-400 font-bold mb-2">المشتركين النشطين (Online)</label>
+                    <input type="number" id="pkg_max_subscribers" name="max_subscribers" required placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-rose-400 font-bold mb-2">العروض المسموح بإنشائها</label>
+                    <input type="number" id="pkg_max_offers" name="max_offers" required placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-rose-500">
+                </div>
+
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-amber-400 font-bold mb-2">كروت الطباعة المتاحة شهرياً</label>
+                    <input type="number" id="pkg_max_vouchers" name="max_vouchers" required placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-amber-500">
+                </div>
+
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-cyan-400 font-bold mb-2">تصاميم الكروت المتاحة</label>
+                    <input type="number" id="pkg_max_designs" name="max_designs" required placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-cyan-500">
+                </div>
+
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-sky-400 font-bold mb-2">السيرفرات المسموحة</label>
+                    <input type="number" id="pkg_max_servers" name="max_servers" placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-sky-500">
+                </div>
+
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <label class="block text-purple-400 font-bold mb-2">الموزعين الفرعيين</label>
+                    <input type="number" id="pkg_max_resellers" name="max_resellers" placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-purple-500">
+                </div>
+                    <div class="flex items-center justify-between p-3 bg-[#0b111e] rounded-lg border border-slate-700">
+                        <span class="text-amber-400 font-bold text-xs">إتاحة الهوت سبوت المركزي للكافيه</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="pkg_hotspot_access" name="hotspot_access" value="1" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-amber-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-[#0b111e] rounded-lg border border-slate-700">
+                        <span class="text-emerald-400 font-bold text-xs">إتاحة تطبيق صقر كونكت لعملاء للكافيه</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="pkg_app_access" name="app_access" value="1" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">مدة صلاحية الاشتراك</label>
+                    <select id="pkg_duration" name="duration_months" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none">
+                        <option value="1">شهر واحد</option>
+                        <option value="3">3 شهور</option>
+                        <option value="6">6 شهور</option>
+                        <option value="12">سنة كاملة</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center mt-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="pkg_is_active" name="is_active" value="1" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500 relative"></div>
+                        <span class="mr-3 text-slate-300 font-bold">باقة نشطة</span>
+                    </label>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-slate-400 mb-1 font-bold">ملاحظات وشروط إدارية (لن تظهر للعميل)</label>
+                    <textarea id="pkg_notes" name="notes" rows="2" placeholder="اكتب أي ملاحظات تخص باقة هذا الكافيه..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white resize-y outline-none"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end gap-2 border-t border-slate-800 pt-4">
+                <button type="button" onclick="closePackageModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition">إلغاء</button>
+                <button type="submit" id="btnSubmitModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition">حفظ الباقة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+window.currentCafeId = null;
+window.currentCafeName = "";
+window.currentCafeUsername = "";
+window.currentCafeDebt = 0;
+
+function showLocalNotification(message, type = 'success') {
+    const container = document.getElementById('toast-container-local');
+    if(!container) return;
+    const toast = document.createElement('div');
+    toast.className = `p-4 rounded-lg shadow-xl border text-xs font-bold text-white transition transform translate-y-2 duration-300 flex items-center gap-2 ${
+        type === 'success' ? 'bg-emerald-900 border-emerald-700' : 'bg-rose-900 border-rose-700'
+    }`;
+    toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function searchCafes() {
+    let input = document.getElementById("advancedCafeSearch").value.toLowerCase();
+    let rows = document.querySelectorAll(".cafe-row");
+    rows.forEach(row => {
+        let name = row.querySelector(".cafe-name") ? row.querySelector(".cafe-name").textContent.toLowerCase() : "";
+        let phone = row.querySelector(".cafe-phone") ? row.querySelector(".cafe-phone").textContent.toLowerCase() : "";
+        let debt = row.querySelector(".cafe-debt") ? row.querySelector(".cafe-debt").textContent.toLowerCase() : "";
+        if (name.includes(input) || phone.includes(input) || debt.includes(input)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('block');
+        tab.classList.add('hidden');
+    });
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('text-blue-400', 'border-blue-500');
+        btn.classList.add('text-slate-400', 'border-transparent');
+    });
+    
+    document.getElementById(tabId).classList.remove('hidden');
+    document.getElementById(tabId).classList.add('block');
+    
+    let activeBtn = document.getElementById('btn-' + tabId);
+    activeBtn.classList.remove('text-slate-400', 'border-transparent');
+    activeBtn.classList.add('text-blue-400', 'border-blue-500');
+}
+
+// ---------------------------------------------
+// دوال النافذة المركزية لإدارة الكافيه (Master Cafe Modal)
+// ---------------------------------------------
+function openMasterCafeModal(id, fullname, username, debt, isActive, billingCode) {
+    window.currentCafeId = id;
+    window.currentCafeName = fullname;
+    window.currentCafeUsername = username || 'غير متوفر';
+    window.currentCafeDebt = debt;
+
+    document.getElementById('modalCafeNameTitle').innerText = fullname;
+    document.getElementById('modalCafeUsername').innerText = window.currentCafeUsername;
+    document.getElementById('modalCafeBilling').innerText = billingCode || 'غير متوفر';
+    document.getElementById('modalCafeDebt').innerText = debt;
+    
+    // مسار الدخول كصاحب كافيه (Impersonate)
+    document.getElementById('btnImpersonateCafe').href = `/impersonate/cafe/${id}`;
+
+    const statusBadge = document.getElementById('modalCafeStatus');
+    const toggleBtn = document.getElementById('modalCafeToggleBtn');
+
+    if(isActive === 'True' || isActive === 'true' || isActive === true) {
+        statusBadge.innerText = 'نشط ✅';
+        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        toggleBtn.innerText = 'إيقاف حساب الكافيه 🛑';
+    } else {
+        statusBadge.innerText = 'موقوف 🔴';
+        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-500/10 text-rose-400 border-rose-500/20';
+        toggleBtn.innerText = 'تفعيل حساب الكافيه ✅';
+    }
+
+    document.getElementById('masterCafeModal').classList.remove('hidden');
+    document.getElementById('masterCafeModal').classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMasterCafeModal() {
+    document.getElementById('masterCafeModal').classList.add('hidden');
+    document.getElementById('masterCafeModal').classList.remove('flex');
+    document.body.style.overflow = 'auto';
+}
+
+// دالة API الموحدة
+async function sendUnifiedAction(url, payload) {
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if(result.status === 'success' || result.success) {
+            showLocalNotification(result.message, 'success');
+            setTimeout(() => window.location.reload(), 1500); 
+        } else {
+            showLocalNotification(result.message, 'error');
+        }
+    } catch (error) {
+        showLocalNotification("خطأ في الاتصال بالخادم.", 'error');
+    }
+}
+
+function triggerCafeAction(actionType) {
+    if (!window.currentCafeId) return;
+    const id = window.currentCafeId;
+    const name = window.currentCafeName;
+    const sysType = 'cafe';
+
+    if (actionType === 'delete') {
+        const confirmWord = prompt(`🚨 تحذير سيادي: لحذف الكافيه [ ${name} ] بكل بياناته وكروته نهائياً، اكتب كلمة 'حذف':`);
+        if (confirmWord === "حذف") {
+            sendUnifiedAction('/api/client/action', { id: id, action: 'delete', system: sysType });
+        }
+    }
+    else if (actionType === 'toggle_status') {
+        sendUnifiedAction('/api/client/action', { id: id, action: 'suspend', system: sysType });
+    }
+    else if (actionType === 'change_password') {
+        const newPass = prompt(`أدخل كلمة المرور الجديدة لمدير الكافيه [ ${name} ]:`);
+        if (newPass && newPass.trim() !== '') {
+            sendUnifiedAction('/api/client/action', { id: id, action: 'change_password', system: sysType, value: newPass });
+        }
+    }
+}
+
+// ---------------------------------------------
+// دوال الدفع اليدوي
+// ---------------------------------------------
+function triggerManualPaymentFromModal() {
+    closeMasterCafeModal();
+    openManualPayment(window.currentCafeId);
+}
+
+function openManualPayment(id) {
+    document.getElementById('pay_id').value = id;
+    document.getElementById('paymentModal').classList.replace('hidden', 'flex');
+}
+
+function closeManualPayment() { 
+    document.getElementById('paymentModal').classList.replace('flex', 'hidden'); 
+}
+
+// ---------------------------------------------
+// دوال الباقات (محدثة لدعم الدولة/العملة والسيرفرات/الموزعين)
+// ---------------------------------------------
+function openPackageModal(action, id='', name='', price='', subs='', offers='', vouchers='', designs='', duration='1', active='True', hotspot='', app='', notes='', servers='', resellers='', country='EG', currency='EGP') { 
+    let modal = document.getElementById('packageModal');
+    let title = document.getElementById('modalTitle');
+    let btnSubmit = document.getElementById('btnSubmitModal');
+    
+    if (action === 'edit') {
+        title.innerText = "تعديل بيانات الباقة";
+        btnSubmit.innerText = "تحديث الباقة";
+        document.getElementById('pkg_id').value = id;
+        document.getElementById('pkg_name').value = name;
+        document.getElementById('pkg_price').value = price;
+        document.getElementById('pkg_country').value = country;
+        document.getElementById('pkg_currency').value = currency;
+        document.getElementById('pkg_max_servers').value = servers;
+        document.getElementById('pkg_max_resellers').value = resellers;
+        document.getElementById('pkg_max_subscribers').value = subs;
+        document.getElementById('pkg_max_offers').value = offers;
+        document.getElementById('pkg_max_vouchers').value = vouchers;
+        document.getElementById('pkg_max_designs').value = designs;
+        document.getElementById('pkg_duration').value = duration;
+        document.getElementById('pkg_is_active').checked = (active === 'True' || active === '1');
+        document.getElementById('pkg_hotspot_access').checked = (hotspot === 'active');
+        document.getElementById('pkg_app_access').checked = (app === 'True' || app === '1');
+        document.getElementById('pkg_notes').value = notes !== 'None' ? notes : '';
+    } else {
+        title.innerText = "إضافة باقة كافيهات جديدة";
+        btnSubmit.innerText = "حفظ الباقة";
+        document.getElementById('pkg_id').value = "";
+        document.getElementById('pkg_name').value = "";
+        document.getElementById('pkg_price').value = "";
+        document.getElementById('pkg_country').value = "EG";
+        document.getElementById('pkg_currency').value = "EGP";
+        document.getElementById('pkg_max_servers').value = "";
+        document.getElementById('pkg_max_resellers').value = "";
+        document.getElementById('pkg_max_subscribers').value = "";
+        document.getElementById('pkg_max_offers').value = "";
+        document.getElementById('pkg_max_vouchers').value = "";
+        document.getElementById('pkg_max_designs').value = "";
+        document.getElementById('pkg_duration').value = "1";
+        document.getElementById('pkg_is_active').checked = true;
+        document.getElementById('pkg_hotspot_access').checked = false;
+        document.getElementById('pkg_app_access').checked = false;
+        document.getElementById('pkg_notes').value = "";
+    }
+    
+    modal.classList.replace('hidden', 'flex'); 
+}
+
+function closePackageModal() { 
+    document.getElementById('packageModal').classList.replace('flex', 'hidden'); 
+}
+
+function deletePackage(id) {
+    if (confirm("هل أنت متأكد من رغبتك في حذف هذه الباقة؟ لا يمكن التراجع عن هذا الإجراء.")) {
+        window.location.href = `/manage/hotspot/package/delete/${id}`;
+    }
+}
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+</style>
+{% endblock %}

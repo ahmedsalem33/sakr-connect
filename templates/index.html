@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6" dir="rtl">
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-2xl">
+        <h3 class="text-slate-400 font-black text-xs flex items-center gap-2 mb-6">
+            <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span> مراقبة أداء العقل المركزي والأحمال الحية (Core Telemetry Widgets)
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <div class="bg-[#0b111e] border border-slate-800 rounded-xl p-4 flex items-center gap-4 shadow-md">
+                <div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-800" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path class="text-amber-500" stroke-width="3" stroke-dasharray="{{ server_cpu|default(14) }}, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                    <span class="absolute text-xs font-mono font-black text-amber-400">{{ server_cpu|default(14) }}%</span>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400">معالج النظام الرئيسي</h4>
+                    <p class="text-[10px] text-slate-500 font-mono mt-0.5">CPU Core Load Status</p>
+                </div>
+            </div>
+
+            <div class="bg-[#0b111e] border border-slate-800 rounded-xl p-4 flex items-center gap-4 shadow-md">
+                <div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-800" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path class="text-blue-500" stroke-width="3" stroke-dasharray="{{ server_ram|default(32) }}, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                    <span class="absolute text-xs font-mono font-black text-blue-400">{{ server_ram|default(32) }}%</span>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400">الذاكرة العشوائية المستهلكة</h4>
+                    <p class="text-[10px] text-slate-500 font-mono mt-0.5">System Memory Allocation</p>
+                </div>
+            </div>
+
+            <div class="bg-[#0b111e] border border-slate-800 rounded-xl p-4 flex items-center gap-4 shadow-md">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl font-mono font-black shrink-0">2ms</div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400">استجابة الـ Radius DB</h4>
+                    <p class="text-[10px] text-emerald-400 font-bold mt-0.5">🟢 مستقر (Excellent)</p>
+                </div>
+            </div>
+
+            <div class="bg-[#0b111e] border border-slate-800 rounded-xl p-4 flex items-center gap-4 shadow-md">
+                <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-xl shrink-0">📡</div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400">أجهزة برودباند متصلة (NAS)</h4>
+                    <p class="text-[11px] font-mono font-black text-cyan-400 mt-0.5">{{ nas_online|default(14) }} / {{ nas_total|default(15) }} عقدة</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="bg-[#0f172a] border border-purple-900/30 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+        <div class="flex items-center gap-3">
+            <div class="text-2xl bg-purple-500/10 p-2.5 rounded-xl border border-purple-500/20 text-purple-400 animate-pulse">🤖</div>
+            <div>
+                <h4 class="text-xs font-black text-purple-300 tracking-wide">التحليلات الاستباقية للذكاء الاصطناعي (AI Predictive Insights)</h4>
+                <p class="text-[11px] text-slate-400 mt-0.5">بناءً على النمط اللحظي للسحب: سيرفر موزع "الصعيد" يقترب من سقف الاختناق وعملاء كافيه "الفيروز" مستقرين تماماً.</p>
+            </div>
+        </div>
+        <button type="button" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-2 rounded-xl text-[11px] font-black transition-all shadow-lg shadow-purple-600/10 whitespace-nowrap">تحسين الأداء الوقائي تلقائياً</button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-sky-500 transition duration-300 group relative">
+            <a href="/manage/pppoe" class="absolute inset-0 z-10" title="دخول إدارة قطاع المنازل"></a>
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1">قطاع المنازل (PPPoE)</p>
+                    <h3 class="text-2xl font-black text-sky-400 font-mono">1,234 <span class="text-[10px] text-slate-500 font-sans">مشترك حي</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition">Home</div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 border-t border-slate-800/60 pt-2">
+                <span>النشط الآن: 850</span>
+                <span class="text-emerald-400 font-bold flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-emerald-500"></span> مستقر</span>
+            </div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-amber-500 transition duration-300 group relative">
+            <a href="/manage/hotspot" class="absolute inset-0 z-10" title="دخول إدارة قطاع الكافيهات"></a>
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1">قطاع الكافيهات (Hotspot)</p>
+                    <h3 class="text-2xl font-black text-amber-400 font-mono">42 <span class="text-[10px] text-slate-500 font-sans">نقطة تفعيل</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition">Cafe</div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 border-t border-slate-800/60 pt-2">
+                <span>سحوبات اليوم: 3,450 EGP</span>
+                <span class="text-amber-400 font-bold flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-amber-500"></span> ذروة</span>
+            </div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-blue-500 transition duration-300 group relative">
+            <a href="/manage/network" class="absolute inset-0 z-10" title="دخول إدارة الشبكات والموزعين"></a>
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1">شبكات الموزعين (Nodes)</p>
+                    <h3 class="text-2xl font-black text-blue-400 font-mono">15 <span class="text-[10px] text-slate-500 font-sans">موزع معتمد</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition">Node</div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 border-t border-slate-800/60 pt-2">
+                <span>سيرفرات حية: 14/15</span>
+                <span class="text-rose-400 font-bold flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-rose-500 animate-pulse"></span> عقدة معطلة</span>
+            </div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col justify-between hover:border-emerald-500 transition duration-300 group relative">
+            <a href="/admin/finance" class="absolute inset-0 z-10" title="دخول الدفتر المحاسبي"></a>
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1">كروت تم إصدارها اليوم</p>
+                    <h3 class="text-2xl font-black text-emerald-400 font-mono">850 <span class="text-[10px] text-slate-500 font-sans">كارت كلي</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl group-hover:scale-110 transition">Cash</div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 border-t border-slate-800/60 pt-2">
+                <span>أرصدة الموزعين: 45,000 EGP</span>
+                <span class="text-emerald-400 font-bold">↑ 12% نمو</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+        
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <div class="bg-[#0f172a] p-5 rounded-xl border border-slate-800 shadow-xl h-72 flex flex-col">
+                <h3 class="text-slate-300 font-black mb-3 text-xs tracking-wide flex items-center gap-1">
+                    <span class="text-cyan-400">⚡</span> استهلاك سحب الباندويث اللحظي الشامل (Global Traffic)
+                </h3>
+                <div class="flex-1 w-full min-h-0 relative">
+                    <div id="chart-bandwidth-live" class="absolute inset-0"></div>
+                </div>
+            </div>
+
+            <div class="bg-[#0f172a] p-5 rounded-xl border border-slate-800 shadow-xl h-72 flex flex-col">
+                <h3 class="text-slate-300 font-black mb-3 text-xs tracking-wide flex items-center gap-1">
+                    <span class="text-amber-500">💳</span> معدل طباعة واستهلاك الكروت الأسبوعي للمنظومة
+                </h3>
+                <div class="flex-1 w-full min-h-0 relative">
+                    <div id="chart-vouchers-live" class="absolute inset-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-[#0b111e] border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden h-[592px]">
+            <div class="p-3 bg-[#151f32] border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-slate-200 font-black text-[11px] flex items-center gap-2 tracking-wide font-mono">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> NOC Live Core Terminal
+                </h3>
+                <span class="text-[9px] text-slate-500 font-mono">Auto-Scroll: Active</span>
+            </div>
+            
+            <div class="flex-1 p-4 overflow-y-auto font-mono text-[10px] space-y-3 custom-scroll select-text text-left" id="terminal-live-logs">
+                <div class="text-slate-500" dir="ltr">[16:01:12] <span class="text-emerald-400 font-bold">INFO:</span> Radius engine synced with Core MikroTik successfully.</div>
+                <div class="text-slate-500" dir="ltr">[16:02:45] <span class="text-sky-400 font-bold">PPPoE:</span> New session initialized for user 'Sub_Homes_449'.</div>
+                <div class="text-slate-500" dir="ltr">[16:05:21] <span class="text-purple-400 font-bold">[AUTO-HEAL]:</span> Freeze detected on Port 3 (Node: Delta_Reseller). Script triggered.</div>
+                <div class="text-slate-500" dir="ltr">[16:05:23] <span class="text-emerald-400 font-bold">[AUTO-HEAL]:</span> Port 3 restarted successfully. Traffic restored. 0% loss.</div>
+                <div class="text-slate-500" dir="ltr">[16:08:14] <span class="text-amber-400 font-bold">[AI-ALERT]:</span> Prediction warning - Node 'Upper_Egypt' CPU trending to 98% in 30mins.</div>
+                <div class="text-slate-500" dir="ltr">[16:08:16] <span class="text-purple-400 font-bold">[AI-BROADCAST]:</span> Proactive popup sent to target node users informing about optimization.</div>
+                <div class="text-slate-500" dir="ltr">[16:10:02] <span class="text-rose-500 font-bold">SECURITY:</span> Blocked IP 185.220.101.4 from repetitive failed SSH attempts.</div>
+                <div class="text-slate-500" dir="ltr">[16:11:55] <span class="text-cyan-400 font-bold">FINANCE:</span> Node 'Mallawi_Center' balance updated +3,500 EGP.</div>
+                <div class="text-slate-500" dir="ltr">[16:12:10] <span class="text-sky-400 font-bold">HOTSPOT:</span> Generated batch #9921 (100 Vouchers) for Cafe_Fayrouz.</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="border-t border-slate-900 pt-4 pb-2 mt-8 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 font-semibold gap-2">
+        <div>
+            <span>جميع الحقوق محفوظة © المنظومة العالمية </span>
+            <span class="text-blue-500 font-black">صقر كونكت (Sakr Connect)</span>
+            <span class="font-mono"> | Version 1.0.0</span>
+        </div>
+        <div class="font-mono text-[10px]">
+            Server Environment: <span class="text-slate-400">Production</span> | Client Scale Node: <span class="text-emerald-400 font-bold">Unlimited Capacity</span>
+        </div>
+    </footer>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const baseOptions = {
+        chart: { foreColor: '#64748b', toolbar: { show: false }, background: 'transparent' },
+        grid: { borderColor: '#1e293b', strokeDashArray: 3 },
+        theme: { mode: 'dark' },
+        tooltip: { theme: 'dark' }
+    };
+
+    const bandwidthOptions = {
+        ...baseOptions,
+        series: [{ name: 'Bandwidth (Mbps)', data: [450, 520, 380, 650, 480, 820, 750, 920, 1100, 1234] }],
+        chart: { type: 'area', height: '100%', parentHeightOffset: 0 },
+        stroke: { curve: 'smooth', width: 2.5 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.0, stops: [0, 90, 100] } },
+        colors: ['#06b6d4'],
+        dataLabels: { enabled: false },
+        xaxis: { 
+            categories: ['8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', 'الآن'],
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+        }
+    };
+    new ApexCharts(document.querySelector("#chart-bandwidth-live"), bandwidthOptions).render();
+
+    const vouchersOptions = {
+        ...baseOptions,
+        series: [{ name: 'الكروت المستهلكة', data: [180, 260, 240, 390, 310, 480, 410] }],
+        chart: { type: 'bar', height: '100%', parentHeightOffset: 0 },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '35%' } },
+        colors: ['#f59e0b'],
+        dataLabels: { enabled: false },
+        xaxis: { 
+            categories: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+        }
+    };
+    new ApexCharts(document.querySelector("#chart-vouchers-live"), vouchersOptions).render();
+
+    // تثبيت السكرول التلقائي لأسفل الـ Terminal
+    const terminal = document.getElementById('terminal-live-logs');
+    terminal.scrollTop = terminal.scrollHeight;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sakr Connect | البوابة الإدارية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #020617; }
+        .admin-glow { box-shadow: 0 0 40px -10px rgba(225, 29, 72, 0.5); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative overflow-hidden selection:bg-rose-500/30">
+
+    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-rose-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <div class="relative z-10 w-full max-w-md p-8">
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-rose-900/50 rounded-2xl p-8 admin-glow">
+            
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-rose-600 to-rose-900 rounded-2xl mx-auto flex items-center justify-center font-black text-3xl text-white shadow-lg shadow-rose-600/40 mb-4 border border-rose-500/30">
+                    S
+                </div>
+                <h1 class="text-2xl font-black text-white tracking-wide">Sakr <span class="text-rose-500">Connect</span></h1>
+                <p class="text-xs text-rose-400 font-bold mt-1 tracking-widest">بوابة الإدارة المركزية - منطقة محظورة</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-3 rounded-lg text-sm font-bold text-center 
+                            {% if category == 'danger' %} bg-rose-500/10 text-rose-400 border border-rose-500/20 
+                            {% else %} bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 {% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="/admin/login" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2">معرف المسؤول (Username)</label>
+                    <input type="text" name="username" required autocomplete="username"
+                        class="w-full bg-slate-950/50 border border-slate-800 text-white text-sm rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 transition-all" 
+                        placeholder="أدخل معرف المسؤول...">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2">كلمة المرور (Password)</label>
+                    <input type="password" name="password" required autocomplete="current-password"
+                        class="w-full bg-slate-950/50 border border-slate-800 text-white text-sm rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 transition-all" 
+                        placeholder="••••••••">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <div class="flex items-center">
+                        <input id="remember" name="remember" type="checkbox" class="w-4 h-4 text-rose-600 bg-slate-900 border-slate-700 rounded focus:ring-rose-500 focus:ring-2 cursor-pointer transition-all accent-rose-600">
+                        <label for="remember" class="mr-2 text-xs font-bold text-slate-400 cursor-pointer hover:text-slate-300 transition-colors">تذكرني</label>
+                    </div>
+                    <a href="/forgot-password" class="text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors">نسيت كلمة المرور؟</a>
+                </div>
+
+                <button type="submit" class="w-full text-white bg-rose-600 hover:bg-rose-700 focus:ring-4 focus:ring-rose-900 font-bold rounded-lg text-sm px-5 py-3.5 text-center transition-all shadow-lg shadow-rose-600/30 mt-4">
+                    تسجيل الدخول الآمن
+                </button>
+            </form>
+
+            <div class="mt-8 text-center border-t border-slate-800 pt-6">
+                <p class="text-[10px] text-slate-500 font-bold">Powered and Secured by</p>
+                <p class="text-[11px] font-black text-rose-500 tracking-wider">Sakr Media Agency</p>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,443 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="space-y-6 w-full max-w-7xl mx-auto" dir="rtl">
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 shadow-lg flex justify-between items-center relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-1.5 bg-blue-500 h-full"></div>
+        <div>
+            <h2 class="text-lg font-black text-white flex items-center gap-2">
+                <span class="text-blue-500">📡</span> المركز الشامل لإدارة الأجهزة والبرودباند
+            </h2>
+            <p class="text-xs text-slate-400 mt-1 font-bold">لوحة تحكم حية مرتبطة لحظياً بسيرفر الراديوس المركزي لمراقبة عتاد الشبكة والتحكم بجلسات المشتركين.</p>
+        </div>
+        <div class="text-left hidden md:block">
+            <p class="text-[10px] font-bold text-slate-500">تطوير: <span class="text-amber-500">Sakr Media Agency</span></p>
+            <p class="text-[10px] font-mono text-slate-600 mt-0.5">الدعم: 01033379719 - 01033379719</p>
+        </div>
+    </div>
+
+    <div class="border-b border-slate-800 flex gap-4">
+        <button onclick="switchTab('network-tab')" id="btn-network-tab" class="pb-3 text-sm font-bold text-blue-400 border-b-2 border-blue-500 transition-all flex items-center gap-2">
+            🖥️ أجهزة الشبكة المركزية
+        </button>
+        <button onclick="switchTab('broadband-tab')" id="btn-broadband-tab" class="pb-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-all flex items-center gap-2">
+            🔌 أجهزة البرودباند وجلسات الراديوس الحية
+        </button>
+    </div>
+
+    <div id="network-tab" class="block space-y-4">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-slate-800 bg-[#151f32] flex flex-wrap justify-between items-center gap-3">
+                <div class="flex gap-2 w-full md:w-1/2">
+                    <input type="text" id="networkSearch" onkeyup="filterTable('networkTableBody', 'networkSearch')" placeholder="ابحث باسم الجهاز أو الآي بي..." class="flex-1 bg-[#0b111e] border border-slate-700 text-xs px-3 py-2 rounded-lg text-white focus:outline-none focus:border-blue-500 transition">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.location.reload()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1">فحص وإعادة تحميل الحالة 🔄</button>
+                    <button onclick="openModal('addDeviceModal')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center gap-1">+ إضافة جهاز للشبكة</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scroll min-h-[200px]">
+                <table class="w-full text-right text-xs whitespace-nowrap">
+                    <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="py-3 px-4 font-bold">#</th>
+                            <th class="py-3 px-4 font-bold">اسم جهاز البث</th>
+                            <th class="py-3 px-4 font-bold">الموديل/النوع</th>
+                            <th class="py-3 px-4 font-bold text-center">البروتوكول</th>
+                            <th class="py-3 px-4 font-bold text-center">الآي بي الثابت (IP)</th>
+                            <th class="py-3 px-4 font-bold text-center">السيرفر المركزي</th>
+                            <th class="py-3 px-4 font-bold text-center">حالة الاتصال الفعلي</th>
+                            <th class="py-3 px-4 font-bold text-center">إجراءات التحكم</th>
+                        </tr>
+                    </thead>
+                    <tbody id="networkTableBody" class="divide-y divide-slate-800/50">
+                        {% if network_devices %}
+                            {% for device in network_devices %}
+                            <tr class="hover:bg-slate-800/30 transition filterable-row">
+                                <td class="py-3 px-4 text-slate-500">{{ loop.index }}</td>
+                                <td class="py-3 px-4 font-bold text-slate-200">{{ device.name }}</td>
+                                <td class="py-3 px-4 text-slate-300">{{ device.type }}</td>
+                                <td class="py-3 px-4 text-center font-mono text-slate-400">{{ device.protocol }}</td>
+                                <td class="py-3 px-4 text-center font-mono font-bold text-blue-400">{{ device.ip }}</td>
+                                <td class="py-3 px-4 text-center text-slate-300">{{ device.server }}</td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="{{ device.status_class }} border text-[10px] font-bold px-2 py-0.5 rounded">{{ device.status }}</span>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex justify-center items-center gap-1.5">
+                                        <a href="{{ device.protocol | lower }}://{{ device.ip }}" target="_blank" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600 hover:text-white px-2.5 py-1 rounded text-[10px] font-bold transition">فتح واجهة الجهاز</a>
+                                        <button onclick="deleteNetworkDevice('{{ device.id }}')" class="bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white px-2.5 py-1 rounded text-[10px] font-bold transition">حذف</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="8" class="py-6 text-center text-slate-500 font-bold">لا توجد أجهزة إرسال أو بث مسجلة حالياً في قاعدة البيانات الحية.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="broadband-tab" class="hidden space-y-4">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-slate-800 bg-[#151f32] flex flex-wrap justify-between items-center gap-3">
+                <div class="flex gap-2 w-full md:w-1/2">
+                    <input type="text" id="broadbandSearch" onkeyup="filterTable('broadbandTableBody', 'broadbandSearch')" placeholder="ابحث باسم المستخدم أو الآي بي الحي..." class="flex-1 bg-[#0b111e] border border-slate-700 text-xs px-3 py-2 rounded-lg text-white focus:outline-none focus:border-amber-500 transition">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="window.location.reload()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1">مزامنة جلسات الراديوس الحية 🔄</button>
+                    <button onclick="openModal('portGuideModal')" class="bg-amber-500 hover:bg-amber-400 text-slate-900 px-4 py-2 rounded-lg text-xs font-black transition shadow-lg shadow-amber-500/20 flex items-center gap-1">ℹ️ دليل بورتات الروترات</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scroll min-h-[300px] relative">
+                {% if broadband_devices %}
+                <table class="w-full text-right text-xs whitespace-nowrap relative z-10"> 
+                    <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="py-3 px-4 font-bold">#</th>
+                            <th class="py-3 px-4 font-bold">اسم مستخدم العميل</th>
+                            <th class="py-3 px-4 font-bold text-center">الآي بي الحي (Framed-IP)</th>
+                            <th class="py-3 px-4 font-bold text-center">سيرفر الاتصال (NAS)</th>
+                            <th class="py-3 px-4 font-bold text-center">الحالة بالراديوس</th>
+                            <th class="py-3 px-4 font-bold text-center">إجراءات التحكم والتحجيم اللحظية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="broadbandTableBody" class="divide-y divide-slate-800/50">
+                        {% for dev in broadband_devices %}
+                        <tr class="hover:bg-slate-800/30 transition filterable-row">
+                            <td class="py-3 px-4 text-slate-500">{{ loop.index }}</td>
+                            <td class="py-3 px-4 font-bold text-slate-200">{{ dev.client_name }}</td>
+                            <td class="py-3 px-4 text-center font-mono font-bold text-amber-400" id="ip-{{ dev.id }}">{{ dev.ip }}</td>
+                            <td class="py-3 px-4 text-center font-mono text-slate-300">{{ dev.server }}</td>
+                            <td class="py-3 px-4 text-center" id="status-{{ dev.id }}">
+                                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">نشط الآن 🟢</span>
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button onclick="openBroadbandRouter('{{ dev.id }}', '{{ dev.client_name }}')" id="btn-open-{{ dev.id }}" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                                        الدخول لراوتر المشترك 🌐
+                                    </button>
+                                    <button onclick="disconnectBroadbandSession('{{ dev.id }}', '{{ dev.client_name }}')" class="bg-rose-600/20 text-rose-400 border border-rose-500/30 hover:bg-rose-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                                        طرد وإعادة اتصال 🔌
+                                    </button>
+                                    <button onclick="monitorLiveTraffic('{{ dev.id }}')" class="bg-purple-600/20 text-purple-400 border border-purple-500/30 hover:bg-purple-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                                        مراقبة الاستهلاك 📊
+                                    </button>
+                                    <button onclick="suspendBroadbandUser('{{ dev.id }}', '{{ dev.client_name }}')" class="bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                                        إيقاف مؤقت للخدمة 🚫
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="absolute inset-0 flex flex-col items-center justify-center opacity-70">
+                    <span class="text-4xl mb-2">📡</span>
+                    <h3 class="text-emerald-400 font-bold text-lg">لا توجد جلسات راديوس نشطة حالياً</h3>
+                    <p class="text-xs text-slate-500 mt-1">يتم سحب أجهزة وعملاء البرودباند هنا ديناميكياً وأوتوماتيكياً فور اتصالهم بالشبكة.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="addDeviceModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center transition-opacity">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-transform" dir="rtl">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#151f32]">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">➕ تسجيل جهاز بث/إرسال جديد</h3>
+            <button onclick="closeModal('addDeviceModal')" class="text-slate-400 hover:text-red-400 transition text-lg">✖</button>
+        </div>
+        <form id="addNetworkDeviceForm">
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5">اسم الجهاز</label>
+                    <input type="text" id="dev_name" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5">آي بي الجهاز (IP Address)</label>
+                    <input type="text" id="dev_ip" required dir="ltr" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none transition text-left font-mono" placeholder="192.168.x.x">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1.5">نوع وموديل الجهاز المعياري</label>
+                    <select id="dev_type" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none transition appearance-none custom-select">
+                        <optgroup label="MikroTik"><option>مايكروتيك (MikroTik)</option></optgroup>
+                        <optgroup label="Ubiquiti Networks">
+                            <option>نانو استيشن (NanoStation)</option>
+                            <option>لوكو استيشن (LocoStation)</option>
+                            <option>روكيت (Rocket)</option>
+                            <option>لايت بيم (LiteBeam)</option>
+                            <option>باور بيم (PowerBeam)</option>
+                            <option>ايرفايبر (AirFiber)</option>
+                        </optgroup>
+                        <optgroup label="Other Brands">
+                            <option>ميموزا (Mimosa)</option>
+                            <option>كامبيوم (Cambium Networks)</option>
+                            <option>تي بي لينك فاروس (TP-Link Pharos)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">بروتوكول الدخول</label>
+                        <select id="dev_protocol" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none transition appearance-none custom-select">
+                            <option value="HTTP">HTTP</option>
+                            <option value="HTTPS">HTTPS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1.5">السيرفر الحاضن (NAS)</label>
+                        <select id="dev_server" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none transition appearance-none custom-select">
+                            {% for srv in active_servers %}
+                            <option value="{{ srv.id }}">{{ srv.name }} 🗄️</option>
+                            {% endfor %}
+                            {% if not active_servers %}
+                            <option value="">لا توجد سيرفرات متاحة</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-800 bg-[#151f32] flex gap-3">
+                <button type="submit" id="btnSaveDevice" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-500/20">حفظ وحقن بالسيستم</button>
+                <button type="button" onclick="closeModal('addDeviceModal')" class="flex-1 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 py-2 rounded-lg text-xs font-bold transition">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="portGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center transition-opacity">
+    <div class="bg-[#0f172a] border border-amber-500/50 rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden transform scale-95 transition-transform max-h-[90vh] flex flex-col" dir="rtl">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-l from-[#151f32] to-[#0f172a]">
+            <div>
+                <h3 class="text-md font-black text-amber-500 flex items-center gap-2">📖 الإعدادات القياسية المحدثة لفتح بورت [HTTP/80] لروترات المشتركين</h3>
+            </div>
+            <button onclick="closeModal('portGuideModal')" class="text-slate-400 hover:text-red-400 transition bg-slate-800 rounded px-3 py-1 text-xs font-bold border border-slate-700">إغلاق ✖</button>
+        </div>
+        <div class="p-5 overflow-y-auto custom-scroll space-y-4">
+            <div class="bg-[#151f32] border border-slate-700 rounded-lg p-4 shadow-md">
+                <h4 class="text-sm font-bold text-white mb-2 border-b border-slate-800 pb-2 flex items-center gap-2"><span class="text-blue-400">🌐</span> TP-Link (الواجهة الحديثة الزرقاء / VDSL)</h4>
+                <div class="text-xs text-slate-300 leading-relaxed font-mono">
+                    1. توجه إلى مسار <span class="text-amber-400">Advanced</span> ثم <span class="text-amber-400">NAT Forwarding</span> ثم اختر <span class="text-amber-400">Virtual Servers</span>.<br>
+                    2. اضغط على خيار <span class="text-emerald-400">Add</span>.<br>
+                    3. قم بتعيين حقل <span class="text-blue-300">External Port</span> وحقل <span class="text-blue-300">Internal Port</span> على القيمة: <strong>80</strong>.<br>
+                    4. في خانة <span class="text-blue-300">Internal IP</span> اكتب آي بي الروتر المحلي الداخلي.<br>
+                    5. اجعل البروتوكول <span class="text-amber-400">ALL</span> واضغط حفظ لتمكين النظام من العبور اللحظي للراوتر.
+                </div>
+            </div>
+            <div class="bg-[#151f32] border border-slate-700 rounded-lg p-4 shadow-md">
+                <h4 class="text-sm font-bold text-white mb-2 border-b border-slate-800 pb-2 flex items-center gap-2"><span class="text-red-500">🌐</span> ZTE (راوترات WE / Vodafone / Orange)</h4>
+                <div class="text-xs text-slate-300 leading-relaxed font-mono">
+                    1. اذهب إلى تبويب <span class="text-amber-400">Internet</span> ومن القائمة الجانبية اختر <span class="text-amber-400">Security</span> ثم <span class="text-amber-400">Port Forwarding</span>.<br>
+                    2. اضغط على خيار <span class="text-emerald-400">Create New Item</span>.<br>
+                    3. من القائمة المنسدلة للـ <span class="text-blue-300">Protocol</span> اختر خيار TCP/UDP.<br>
+                    4. في خانات بورتات <span class="text-blue-300">WAN Host Port</span> و <span class="text-blue-300">LAN Host Port</span> اكتب النطاق: <strong>80</strong> إلى <strong>80</strong>.<br>
+                    5. في خانة <span class="text-blue-300">LAN Host IP Address</span> اكتب آي بي الروتر ثم وافق بـ Apply.
+                </div>
+            </div>
+            <div class="bg-[#151f32] border border-slate-700 rounded-lg p-4 shadow-md">
+                <h4 class="text-sm font-bold text-white mb-2 border-b border-slate-800 pb-2 flex items-center gap-2"><span class="text-emerald-500">🌐</span> Huawei (راوترات WE / Etisalat VDSL)</h4>
+                <div class="text-xs text-slate-300 leading-relaxed font-mono">
+                    1. توجه مباشرة لقائمة <span class="text-amber-400">Advanced</span> ثم <span class="text-amber-400">Forward Rules</span> ثم اختر <span class="text-amber-400">IPv4 Port Mapping</span>.<br>
+                    2. اضغط على زر <span class="text-emerald-400">New</span> لقفل سطر القاعدة الجديد.<br>
+                    3. في خانة <span class="text-blue-300">Internal Host</span> اكتب الآي بي الداخلي للراوتر.<br>
+                    4. في خانات البورتات الخارجية والداخلية قم بكتابة: <strong>80</strong>، ثم اضغط Apply وتأكد من تفعيل خانة التمكين.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0b111e; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    .custom-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: left 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-left: 2.5rem;
+    }
+</style>
+
+<script>
+    // التبديل الصارم بين تابات اللوحة
+    function switchTab(tabId) {
+        document.getElementById('network-tab').classList.add('hidden');
+        document.getElementById('broadband-tab').classList.add('hidden');
+        
+        const btnNetwork = document.getElementById('btn-network-tab');
+        const btnBroadband = document.getElementById('btn-broadband-tab');
+        
+        btnNetwork.className = "pb-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-all flex items-center gap-2";
+        btnBroadband.className = "pb-3 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-all flex items-center gap-2";
+        
+        document.getElementById(tabId).classList.remove('hidden');
+        if(tabId === 'network-tab') {
+            btnNetwork.className = "pb-3 text-sm font-bold text-blue-400 border-b-2 border-blue-500 transition-all flex items-center gap-2";
+        } else {
+            btnBroadband.className = "pb-3 text-sm font-bold text-amber-500 border-b-2 border-amber-500 transition-all flex items-center gap-2";
+        }
+    }
+
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.children[0].classList.remove('scale-95');
+            modal.children[0].classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.children[0].classList.remove('scale-100');
+        modal.children[0].classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 150); 
+    }
+
+    function filterTable(tableBodyId, searchInputId) {
+        const filter = document.getElementById(searchInputId).value.toLowerCase();
+        const rows = document.getElementById(tableBodyId).getElementsByClassName('filterable-row');
+        for (let i = 0; i < rows.length; i++) {
+            const text = rows[i].innerText.toLowerCase();
+            rows[i].style.display = text.includes(filter) ? "" : "none";
+        }
+    }
+
+    // =========================================================================
+    // الأوامر التنفيذية الفعالة لأجهزة الشبكة المركزية
+    // =========================================================================
+    async function deleteNetworkDevice(deviceId) {
+        if(!confirm('تنبيه إداري: هل أنت متأكد من مسح هذا الجهاز نهائياً من قاعدة البيانات الحية للشبكة؟')) return;
+        try {
+            const res = await fetch(`/manage/network-devices/delete/${deviceId}`, { method: 'DELETE' });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('فشل أمر الحذف: السيرفر المركزي رفض الطلب.');
+            }
+        } catch(e) { 
+            alert('انقطع اتصال الـ API بالسيرفر الرئيسي.'); 
+        }
+    }
+
+    document.getElementById('addNetworkDeviceForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const serverSelect = document.getElementById('dev_server').value;
+        if (!serverSelect) {
+            alert('خطأ تقني: لا يوجد سيرفر مستضيف متاح لربط الجهاز.');
+            return;
+        }
+
+        const btnSave = document.getElementById('btnSaveDevice');
+        btnSave.disabled = true;
+        btnSave.innerText = "جاري الحفظ والمزامنة الحية...";
+
+        const payload = {
+            name: document.getElementById('dev_name').value,
+            ip_address: document.getElementById('dev_ip').value,
+            device_type: document.getElementById('dev_type').value,
+            protocol: document.getElementById('dev_protocol').value,
+            server_id: serverSelect
+        };
+
+        try {
+            const response = await fetch('/manage/network-devices/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('تأكيد: تم تسجيل وحقن الجهاز في الشبكة بنجاح.');
+                window.location.reload();
+            } else {
+                alert(`خطأ من السيرفر: ${result.message}`);
+                btnSave.disabled = false;
+                btnSave.innerText = "حفظ بالداتا بيز";
+            }
+        } catch (error) {
+            alert('انقطع الاتصال بالباك إند أثناء المزامنة الحية.');
+            btnSave.disabled = false;
+            btnSave.innerText = "حفظ بالداتا بيز";
+        }
+    });
+
+    // =========================================================================
+    // الأوامر التنفيذية الصارمة لتابة البرودباند وجلسات الراديوس
+    // =========================================================================
+    
+    // 1. الدخول الآمن عن بعد لراوتر المشترك بالآي بي الحي المسحوب لحظياً
+    async function openBroadbandRouter(clientId, clientName) {
+        const btn = document.getElementById(`btn-open-${clientId}`);
+        btn.disabled = true;
+        btn.classList.add('opacity-60');
+        
+        try {
+            const response = await fetch(`/manage/broadband/fetch-access/${clientId}`, { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById(`ip-${clientId}`).innerText = result.current_ip;
+                window.open(result.access_url, '_blank');
+            } else {
+                alert(`فشل الوصول: ${result.message}`);
+            }
+        } catch (error) {
+            alert('خطأ اتصال بالسيرفر المركزي لـ صقر كونكت.');
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+        }
+    }
+
+    // 2. طرد وفصل الجلسة لحظياً وإجبار المايكروتيك على سحب آي بي جديد (CoA Packet)
+    async function disconnectBroadbandSession(clientId, clientName) {
+        if(!confirm(`أمر راديوس: هل أنت متأكد من طرد جلسة المشترك [${clientName}] لإعادة اتصاله بالشبكة فوراً؟`)) return;
+        try {
+            const response = await fetch(`/manage/broadband/disconnect/${clientId}`, { method: 'POST' });
+            const result = await response.json();
+            alert(result.message);
+            if(result.success) window.location.reload();
+        } catch (e) {
+            alert('فشل إرسال حزمةCoA لقطع الاتصال.');
+        }
+    }
+
+    // 3. مراقبة ترافيك السحب اللحظي والسرعة من السيرفر
+    function monitorLiveTraffic(clientId) {
+        // فتح واجهة رسم بياني حية مرتبطة بـ API السيرفر ومقاييس السرعة
+        const width = 800, height = 500;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        window.open(`/manage/broadband/monitor/${clientId}`, 'TrafficMonitor', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
+    }
+
+    // 4. إيقاف الخدمة وتعطيل الحساب وتجميده في الراديوس لمنع إعادة الاتصال
+    async function suspendBroadbandUser(clientId, clientName) {
+        if(!confirm(`أمن المنظومة: هل أنت متأكد من إيقاف نشاط المشترك [${clientName}] وفصل الخدمة عنه فوراً؟`)) return;
+        try {
+            const response = await fetch(`/manage/broadband/suspend/${clientId}`, { method: 'POST' });
+            const result = await response.json();
+            alert(result.message);
+            if(result.success) window.location.reload();
+        } catch (e) {
+            alert('فشل تنفيذ أمر تعليق الحساب بالسيرفر المركزي.');
+        }
+    }
+</script>
+{% endblock %}

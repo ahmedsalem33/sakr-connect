@@ -1,0 +1,420 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* 1. إصلاح القوائم المنسدلة وتطبيق تصميم Custom Caret المودرن بلون بارز */
+    select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        background-size: 15px;
+        padding-left: 35px !important;
+        cursor: pointer;
+    }
+    select option { background-color: #1e293b !important; color: #ffffff !important; }
+    
+    /* 2. شريط التحكم العلوي - تصميم مدمج واحترافي */
+    .page-header-controls { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 12px 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .btn-action { border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s; color: #fff; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .btn-add { background: #0ea5e9; }
+    .btn-add:hover { background: #0284c7; }
+    .btn-return { background: #64748b; display: none; }
+    .btn-return:hover { background: #475569; }
+    .btn-refresh { background: #334155; }
+    .btn-refresh:hover { background: #1e293b; }
+
+    /* 3. البحث المدمج */
+    .search-wrapper { display: inline-flex; align-items: center; background: #0f172a; border: 1px solid #334155; padding: 0 12px; border-radius: 6px; margin-left: 10px; height: 36px; transition: border-color 0.2s; }
+    .search-wrapper:focus-within { border-color: #3b82f6; }
+    .search-wrapper input { background: transparent; border: none; color: #fff; outline: none; padding: 0 8px; height: 100%; font-size: 13px; }
+
+    /* 4. الفورم - تصغير الحجم العام (Compact & Sleek Design) */
+    .form-container { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; display: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 5px; }
+    .form-group label { color: #cbd5e1; font-size: 13px; font-weight: 600; display: block; }
+    
+    /* 5. الخانات المدمجة (Hybrid) - ارتفاع 38px لإعطاء مظهر عالمي غير منتفخ */
+    .input-group { display: flex; background: #0f172a; border: 1px solid #334155; border-radius: 6px; overflow: hidden; align-items: center; width: 100%; box-sizing: border-box; height: 38px; transition: border-color 0.2s; }
+    .input-group:focus-within { border-color: #3b82f6; }
+    .input-group input, .input-group select { flex: 1; background: transparent; border: none; color: #fff; padding: 0 12px; outline: none; height: 100%; box-sizing: border-box; font-size: 13px; }
+    .input-group select { cursor: pointer; }
+    .input-group .addon { background: #1e293b; width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; border-left: 1px solid #334155; color: #3b82f6; font-size: 14px; }
+    .input-group .addon.text-addon { width: auto; padding: 0 12px; color: #94a3b8; border-right: 1px solid #334155; font-size: 12px; font-weight: 600; }
+    
+    /* 6. التفعيل (Switch) - تصميم ناعم وتباين عالي للنص */
+    .switch-container { display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 0 15px; border-radius: 6px; border: 1px solid #334155; height: 38px; }
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #0ea5e9; }
+    input:checked + .slider:before { transform: translateX(-16px); }
+
+    /* 7. الحقول الديناميكية - إطار أزرق أنيق بدلاً من المتقطع */
+    .dynamic-field { display: none; margin-top: 10px; padding: 15px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; border-right: 3px solid #3b82f6; }
+
+    /* 8. الجدول - تأثيرات Hover وتنسيق ناعم */
+    .table-container { background: #1e293b; border: 1px solid #334155; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .data-table { width: 100%; color: #f8fafc; border-collapse: collapse; text-align: center; font-size: 13px; }
+    .data-table th { padding: 12px; background: #0f172a; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; }
+    .data-table td { padding: 12px; border-bottom: 1px solid #334155; }
+    .data-table tr:hover { background-color: #0f172a; }
+    
+    /* 9. أزرار الحفظ والإلغاء */
+    .form-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 25px; border-top: 1px solid #334155; padding-top: 20px; }
+    .btn-save { background: #0ea5e9; color: #fff; border: none; padding: 10px 30px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
+    .btn-save:hover { background: #0284c7; }
+    .btn-cancel { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 9px 30px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-right: 10px; font-size: 14px; transition: 0.2s; }
+    .btn-cancel:hover { background: #ef4444; color: #fff; }
+</style>
+
+<div style="padding: 20px;" dir="rtl">
+
+    <div class="page-header-controls">
+        <div style="display: flex; gap: 10px;">
+            <button id="btnShowForm" class="btn-action btn-add" onclick="toggleView('form')">
+                <i class="fa-solid fa-plus"></i> اضافة عرض جديد
+            </button>
+            <button id="btnShowTable" class="btn-action btn-return" onclick="toggleView('table')">
+                <i class="fa-solid fa-arrow-right"></i> العودة الى العروض
+            </button>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <div class="search-wrapper">
+                <i class="fa-solid fa-search" style="color: #94a3b8;"></i>
+                <input type="text" placeholder="بحث في العروض...">
+            </div>
+            <button class="btn-action btn-refresh" onclick="location.reload()">
+                <i class="fa-solid fa-arrows-rotate"></i> تحديث
+            </button>
+        </div>
+    </div>
+
+    <div id="table-view" class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم العرض</th>
+                    <th>السرعة</th>
+                    <th>المدة</th>
+                    <th>السعر</th>
+                    <th>التحكم</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for offer in offers %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td style="font-weight: bold; color: #fff;">{{ offer.name }}</td>
+                    <td style="color: #3b82f6;" dir="ltr">{{ offer.speed }}</td>
+                    <td>{{ offer.duration }} {{ offer.duration_type }}</td>
+                    <td style="color: #fbbf24; font-weight: bold;">{{ offer.price }} ج.م</td>
+                    <td>
+                        <button style="background:transparent; border:none; color:#3b82f6; cursor:pointer; margin:0 5px;" title="تعديل"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button style="background:transparent; border:none; color:#ef4444; cursor:pointer; margin:0 5px;" title="حذف"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 40px; color: #ef4444; font-weight: bold; font-size: 15px;">
+                        👀 لا يوجد أي بيانات حاليا
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top: 15px; text-align: right; font-size: 12px;">
+            <div style="background: #0f172a; padding: 5px 10px; border-radius: 6px; border: 1px solid #334155; display: inline-block; color: #94a3b8;">
+                عرض 
+                <select style="background: transparent; border: none; color: #fff; outline: none; padding: 0 5px; cursor: pointer; padding-left: 25px !important;">
+                    <option>100</option>
+                    <option>50</option>
+                    <option>25</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-view" class="form-container">
+        <form action="{{ url_for('client_settings.manage_offers') }}" method="POST">
+            <div class="form-grid">
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div class="switch-container" style="margin-bottom: 5px;">
+                        <label style="color: #ffffff; font-weight: 800; margin: 0; font-size: 13px;">اظهار العرض للمشتركين</label>
+                        <label class="switch">
+                            <input type="checkbox" name="is_active" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>اسم العرض</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-tag" style="color:#fbbf24;"></i></span>
+                            <input type="text" name="name" placeholder="مثال : 50 جيجا سرعه اتنين ميجا" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>معادلة السرعة</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-bolt" style="color:#ef4444;"></i></span>
+                            <input type="text" name="speed_custom" placeholder="يدوي: 256k/1024k" dir="ltr" style="text-align: right;">
+                            <select name="speed" style="max-width: 150px; border-right: 1px solid #334155;" dir="ltr">
+                                <option value="">اختر سرعة جاهزة</option>
+                                <option value="0">سرعة مفتوحة 0</option>
+                                <option value="64k/256k">ربع ميجا (256K)</option>
+                                <option value="128k/512k">نصف ميجا (512K)</option>
+                                <option value="256k/1024k" selected>واحد ميجا (1M)</option>
+                                <option value="512k/2048k">اتنين ميجا (2M)</option>
+                                <option value="1024k/4096k">أربعة ميجا (4M)</option>
+                                <option value="1280k/5120k">خمسة ميجا (5M)</option>
+                                <option value="2048k/8192k">ثمانية ميجا (8M)</option>
+                                <option value="2560k/10240k">عشرة ميجا (10M)</option>
+                                <option value="3840k/15360k">خمسة عشر ميجا (15M)</option>
+                                <option value="5120k/20480k">عشرون ميجا (20M)</option>
+                                <option value="6400k/25600k">خمسة وعشرون (25M)</option>
+                                <option value="7680k/30720k">ثلاثون ميجا (30M)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>کمية التحميل والرفع الكلية</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-cloud-arrow-down" style="color:#3b82f6;"></i></span>
+                            <select name="quota_unit" style="max-width: 90px; border-left: 1px solid #334155;">
+                                <option value="GB" selected>جيجا</option>
+                                <option value="MB">ميجا</option>
+                            </select>
+                            <input type="number" name="quota_limit" placeholder="0 غير محدود">
+                        </div>
+                    </div>
+
+                    <div class="switch-container" style="margin-top: 5px;">
+                        <label style="color: #ffffff; font-weight: 800; margin: 0; font-size: 13px;">تفعيل وقت الذروة</label>
+                        <label class="switch">
+                            <input type="checkbox" id="togglePeakTime" name="peak_time_enabled" onchange="handlePeakTime()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="peakTimeFields" class="dynamic-field">
+                        <div class="form-group">
+                            <label style="color:#ef4444;">وقت الذروة (من - إلى)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div class="input-group">
+                                    <input type="time" name="peak_start">
+                                </div>
+                                <div class="input-group">
+                                    <input type="time" name="peak_end">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>سرعة وقت الذروة</label>
+                            <div class="input-group">
+                                <span class="addon"><i class="fa-solid fa-bolt" style="color:#ef4444;"></i></span>
+                                <select name="peak_speed" dir="ltr">
+                                    <option value="">اختر سرعة وقت الذروة</option>
+                                    <option value="64k/256k">ربع ميجا (256K)</option>
+                                    <option value="128k/512k">نصف ميجا (512K)</option>
+                                    <option value="256k/1024k">واحد ميجا (1M)</option>
+                                    <option value="512k/2048k">اتنين ميجا (2M)</option>
+                                    <option value="1024k/4096k">أربعة ميجا (4M)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>الفلتر</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-shield-halved" style="color:#ef4444;"></i></span>
+                            <select name="firewall_filter">
+                                <option value="none" selected>لا شيء</option>
+                                <option value="family_dns">منع المواقع الإباحية</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>فصل الخدمة عن العميل اذا لم يتم سداد الفاتورة بعد</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-eye-slash" style="color:#10b981;"></i></span>
+                            <select name="grace_period_action">
+                                <option value="stop" selected>إيقاف</option>
+                                <option value="1_day">يوم واحد</option>
+                                <option value="3_days">ثلاثة أيام</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 45px;">
+                    <div class="form-group">
+                        <label>السعر</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-money-bill-1" style="color:#10b981;"></i></span>
+                            <input type="number" name="price" placeholder="مثال: 100" required>
+                            <span class="addon text-addon">جنيه مصري</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>المدة</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-clock" style="color:#f59e0b;"></i></span>
+                            <input type="number" name="duration" value="1" style="text-align: center;" required>
+                            <select name="duration_type" style="max-width: 100px; border-right: 1px solid #334155;">
+                                <option value="month" selected>شهر</option>
+                                <option value="day">يوم</option>
+                                <option value="hour">ساعة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>نوع الباقة</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-cloud" style="color:#3b82f6;"></i></span>
+                            <select id="packageType" name="package_type" onchange="handlePackageType()">
+                                <option value="full" selected>كاملة المدة</option>
+                                <option value="daily">الباقة اليومية (تقسيم الكوتة)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="dailyQuotaField" class="dynamic-field">
+                        <div class="form-group">
+                            <label style="color:#3b82f6;">كمية التحميل اليومية للعميل</label>
+                            <div class="input-group">
+                                <input type="number" name="daily_quota" placeholder="مثال: 2 جيجا يوميا">
+                                <span class="addon text-addon">جيجا</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>بعد انتهاء الباقة</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-sliders" style="color:#10b981;"></i></span>
+                            <select id="afterQuota" name="after_quota_action" onchange="handleAfterQuota()">
+                                <option value="disconnect" selected>فصل الخدمة نهائي</option>
+                                <option value="renew">تجديد تلقائي للعميل</option>
+                                <option value="custom">تخصيص جيجات وسرعة للعميل</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="customQuotaFields" class="dynamic-field">
+                        <div class="form-group">
+                            <label style="color:#10b981;">الجيجات بعد انتهاء الباقة</label>
+                            <div class="input-group">
+                                <input type="number" name="after_quota_gb" placeholder="مثال: 0 للنت المفتوح">
+                                <span class="addon text-addon">جيجا</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label style="color:#10b981;">السرعة بعد انتهاء الباقة</label>
+                            <div class="input-group">
+                                <span class="addon"><i class="fa-solid fa-bolt" style="color:#ef4444;"></i></span>
+                                <select name="after_quota_speed" dir="ltr">
+                                    <option value="">اختر السرعة...</option>
+                                    <option value="64k/256k">ربع ميجا (256K)</option>
+                                    <option value="128k/512k">نصف ميجا (512K)</option>
+                                    <option value="256k/1024k">واحد ميجا (1M)</option>
+                                    <option value="512k/2048k">اتنين ميجا (2M)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>بعد انتهاء الوقت</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-sliders" style="color:#10b981;"></i></span>
+                            <select name="after_time_action">
+                                <option value="disconnect" selected>فصل الخدمة نهائي</option>
+                                <option value="renew">تجديد تلقائي للعميل</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>IP-Pool (رينج الايبهات)</label>
+                        <div class="input-group">
+                            <span class="addon"><i class="fa-solid fa-network-wired" style="color:#10b981;"></i></span>
+                            <input type="text" name="ip_pool" value="ip_ppp" dir="ltr" style="text-align: right;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <div>
+                    <button type="submit" class="btn-save">حفظ العرض</button>
+                    <button type="button" class="btn-cancel" onclick="toggleView('table')">إلغاء</button>
+                </div>
+                
+                <div style="background: #0f172a; padding: 0 15px; border-radius: 6px; border: 1px solid #334155; display: inline-flex; align-items: center; gap: 15px; height: 38px; box-sizing: border-box;">
+                    <span style="color: #ffffff; font-weight: 800; font-size: 13px;">السماح بالظهور للموزعين</span>
+                    <label class="switch">
+                        <input type="checkbox" name="allow_resellers" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // التبديل بين الجدول وإضافة العرض
+    function toggleView(viewName) {
+        const tableView = document.getElementById('table-view');
+        const formView = document.getElementById('form-view');
+        const btnAdd = document.getElementById('btnShowForm');
+        const btnReturn = document.getElementById('btnShowTable');
+
+        if (viewName === 'form') {
+            tableView.style.display = 'none';
+            formView.style.display = 'block';
+            btnAdd.style.display = 'none';
+            btnReturn.style.display = 'inline-flex';
+        } else {
+            formView.style.display = 'none';
+            tableView.style.display = 'block';
+            btnReturn.style.display = 'none';
+            btnAdd.style.display = 'inline-flex';
+        }
+    }
+
+    // ديناميكية: تفعيل وقت الذروة
+    function handlePeakTime() {
+        const isChecked = document.getElementById('togglePeakTime').checked;
+        document.getElementById('peakTimeFields').style.display = isChecked ? 'block' : 'none';
+    }
+
+    // ديناميكية: نوع الباقة (يومية)
+    function handlePackageType() {
+        const val = document.getElementById('packageType').value;
+        document.getElementById('dailyQuotaField').style.display = (val === 'daily') ? 'block' : 'none';
+    }
+
+    // ديناميكية: بعد انتهاء الباقة (تخصيص سرعة)
+    function handleAfterQuota() {
+        const val = document.getElementById('afterQuota').value;
+        document.getElementById('customQuotaFields').style.display = (val === 'custom') ? 'block' : 'none';
+    }
+</script>
+{% endblock %}

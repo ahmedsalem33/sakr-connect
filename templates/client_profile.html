@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto p-4" dir="rtl">
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-lg relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
+        
+        <div class="flex flex-col md:flex-row items-center gap-4 z-10 text-center md:text-right">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 {% if client.status == 'active' %}border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]{% else %}border-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]{% endif %} flex items-center justify-center text-3xl">
+                👤
+            </div>
+            <div>
+                <h1 class="text-lg font-black text-slate-100 flex items-center justify-center md:justify-start gap-2">
+                    أهلاً بك، {{ client.name or client.fullname }}
+                    <span class="text-[10px] font-bold {% if client.status == 'active' %}bg-emerald-500/10 text-emerald-400 border-emerald-500/20{% else %}bg-rose-500/10 text-rose-400 border-rose-500/20{% endif %} border px-2 py-0.5 rounded-md">
+                        {% if client.status == 'active' %}الحساب نشط{% else %}الاشتراك متوقف{% endif %}
+                    </span>
+                </h1>
+                <p class="text-xs text-slate-500 mt-1 font-mono">اسم المستخدم: {{ client.username }}</p>
+            </div>
+        </div>
+
+        {% if session.get('is_admin') %}
+        <div class="mt-4 md:mt-0 z-10">
+            <a href="/manage/pppoe" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl font-bold text-xs border border-slate-700 transition">
+                ↩️ إنهاء المحاكاة والعودة للإدارة
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 h-full bg-blue-500"></div>
+            <div>
+                <h3 class="text-slate-400 font-bold text-xs flex items-center gap-2 mb-4">📋 تفاصيل اشتراكك الحالية</h3>
+                <div class="space-y-3.5 text-xs font-bold text-slate-300">
+                    <div class="flex justify-between border-b border-slate-800/60 pb-2">
+                        <span class="text-slate-500">الباقة / السرعة المتصل بها:</span>
+                        <span class="text-white font-mono">{{ client.speed or 'باقة منزلية' }}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-800/60 pb-2">
+                        <span class="text-slate-500">تاريخ انتهاء الاشتراك:</span>
+                        <span class="text-amber-400 font-mono">{{ client.expire_date.strftime('%Y-%m-%d') if client.expire_date else '---' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">الأيام المتبقية للتجديد:</span>
+                        <span class="text-emerald-400 font-mono">{{ client.days_left | default(0) }} يوم</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800/60">
+                <div class="w-full bg-[#151f32] rounded-full h-2 border border-slate-800/80 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-2 rounded-full" style="width: {{ client.progress | default(0) }}%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500"></div>
+            <div>
+                <h3 class="text-slate-400 font-bold text-xs flex items-center gap-2 mb-4">💰 المحفظة والرصيد</h3>
+                <div class="space-y-3.5 text-xs font-bold text-slate-300">
+                    <div class="flex justify-between border-b border-slate-800/60 pb-2">
+                        <span class="text-slate-500">رصيدك المتاح حالياً:</span>
+                        <span class="text-cyan-400 font-mono text-sm">{{ client.balance | default(0) }} EGP</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">المستحقات المتأخرة:</span>
+                        <span class="text-rose-400 font-mono text-sm">{{ client.debt | default(0) }} EGP</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-2.5 bg-[#0b111e] border border-slate-800 rounded-xl text-center mt-4">
+                <span class="text-[10px] text-slate-500 block">لشحن الرصيد وتجديد الاشتراك، يرجى التواصل مع إدارة الشبكة أو شحن كارت الشحن الخاص بك مباشرة.</span>
+            </div>
+        </div>
+
+        <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-1 h-full bg-amber-500"></div>
+            <div>
+                <h3 class="text-slate-400 font-bold text-xs flex items-center gap-2 mb-4">🛠️ الدعم الفني والمساعدة</h3>
+                <div class="space-y-3 text-xs text-slate-300 font-bold">
+                    <p class="text-slate-400 leading-relaxed text-[11px]">
+                        في حال واجهتك أي مشكلة في استقرار الخدمة أو بطء سرعة الإنترنت، يمكنك إعادة تشغيل الراوتر المنزلي الخاص بك، أو التواصل مع مركز الدعم الفني مباشرة.
+                    </p>
+                </div>
+            </div>
+            <div class="mt-4 pt-2">
+                <div class="p-2 bg-amber-500/5 border border-amber-500/10 text-center rounded-xl">
+                    <span class="text-[11px] text-amber-400 font-black">⚙️ نظام صقر كونكت للمنازل الذكية</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <h2 class="text-slate-400 font-bold text-xs mb-4">📊 سجل الحركات المالية الأخيرة لحسابك</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-right text-xs">
+                <thead class="bg-[#0b111e] text-slate-500 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4">التاريخ</th>
+                        <th class="py-3 px-4">نوع العملية</th>
+                        <th class="py-3 px-4">المبلغ</th>
+                        <th class="py-3 px-4">البيان</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-bold text-slate-300">
+                    {% for invoice in client_invoices %}
+                    <tr class="hover:bg-slate-800/20">
+                        <td class="py-2.5 px-4 font-mono text-slate-400">{{ invoice.date.strftime('%Y-%m-%d') }}</td>
+                        <td class="py-2.5 px-4">
+                            {% if invoice.type == 'charge' %}
+                            <span class="text-emerald-400">إيداع / شحن رصيد</span>
+                            {% else %}
+                            <span class="text-rose-400">تجديد باقة اشتراك</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2.5 px-4 font-mono">{{ invoice.amount }} EGP</td>
+                        <td class="py-2.5 px-4 text-slate-400 text-[11px]">{{ invoice.notes or '---' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-slate-500">لا توجد عمليات مسجلة حالياً في حسابك.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

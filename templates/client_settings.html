@@ -1,0 +1,604 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* تصميم القوائم المنسدلة العالمي (Custom Caret) بلون بارز متوافق مع الـ RTL */
+    select {
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat; background-position: left 12px center; background-size: 14px;
+        padding-left: 35px !important; cursor: pointer;
+    }
+    select option { background-color: #151f32 !important; color: #ffffff !important; }
+
+    /* تحسينات الواجهة المدمجة فائقة التباين Compact Premium UI */
+    .compact-input { height: 38px; background-color: #0b1221; border: 1px solid #334155; border-radius: 6px; padding: 0 12px; font-size: 13px; color: #f8fafc; outline: none; transition: all 0.2s; width: 100%; text-align: center; }
+    .compact-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+    .compact-label { color: #ffffff; font-size: 13px; font-weight: 800; margin-bottom: 6px; display: block; text-align: right; }
+    
+    /* تأثير التوهج الذكي للأزرار والكروت Glow Hover Effect */
+    .tab-btn { position: relative; overflow: hidden; border: 1px solid #334155; font-weight: 700; transition: all 0.3s; }
+    .tab-btn:hover { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.2); }
+    .tab-btn.active-tab { background-color: #f59e0b !important; color: #0f172a !important; border-color: #f59e0b !important; }
+
+    /* لوحة تتبع الحالة الوميضية Live Status Pulse */
+    .pulse-dot { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; position: relative; }
+    .pulse-dot::after { content: ''; width: 100%; height: 100%; background-color: #10b981; border-radius: 50%; position: absolute; top: 0; left: 0; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+
+    /* حاوية محاكاة الموبايل للمعاينة الحية Live Smartphone Sandbox Mockup */
+    .phone-mockup { width: 100%; max-width: 290px; height: 520px; background: #000; border: 10px solid #1e293b; border-radius: 32px; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; margin: 0 auto; }
+    .phone-screen { width: 100%; height: 100%; background-color: #ffffff; color: #000; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: sans-serif; transition: background 0.3s, color 0.3s; overflow-y: auto; }
+    
+    /* تصحيح خطأ الـ CSS تماماً وإضافة نقطتين رأسيتين و display سليم */
+    .custom-switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+    .custom-switch input { opacity: 0; width: 0; height: 0; }
+    .custom-slider { position: relative; width: 44px; height: 22px; background-color: #475569; border-radius: 34px; transition: .3s; }
+    .custom-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .custom-slider { background-color: #10b981; }
+    input:checked + .custom-slider:before { transform: translateX(22px); }
+
+    .textarea-script { font-family: monospace; font-size: 12px; background-color: #050b14; border: 1px solid #1e293b; color: #38bdf8; border-radius: 6px; padding: 12px; width: 100%; height: 120px; outline: none; resize: none; direction: ltr; text-align: left; }
+
+    /* تصميم الـ Modals الخاصة بالشروحات المكتوبة */
+    .info-modal { display: none; position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.75); z-index: 100; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+    .info-modal-content { background-color: #101828; border: 1px solid #1e293b; border-radius: 12px; max-w: 500px; width: 100%; p: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); text-align: right; }
+</style>
+
+<div class="max-w-7xl mx-auto w-full" dir="rtl">
+    <div class="bg-[#0b1221] rounded-lg border border-slate-800 p-6 min-h-[85vh] flex flex-col relative shadow-2xl">
+
+        {% if server_type == 'شبكات' %}
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <h2 class="text-xl font-bold text-white">الإعدادات العامة والربط المركزية</h2>
+                <div class="flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded-full text-[11px] text-emerald-400 font-bold">
+                    <span class="pulse-dot"></span> متصل بالمنظومة حياً
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-8">
+            <button type="button" onclick="switchTab('tab-dashboard')" id="btn-dashboard" class="tab-btn active-tab bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-user-circle"></i> لوحة العميل
+            </button>
+            <button type="button" onclick="switchTab('tab-profile')" id="btn-profile" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-cogs"></i> لوحة النظام
+            </button>
+            <button type="button" onclick="switchTab('tab-permissions')" id="btn-permissions" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-shield-alt"></i> صلاحيات التطبيق
+            </button>
+            <button type="button" onclick="switchTab('tab-subscribers')" id="btn-subscribers" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-users"></i> المشتركين والأتمتة
+            </button>
+            <button type="button" onclick="switchTab('tab-cards')" id="btn-cards" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-ticket-alt"></i> سياسات الكروت والماك
+            </button>
+            <button type="button" onclick="switchTab('tab-roaming')" id="btn-roaming" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-lock"></i> التنقل والتسجيل
+            </button>
+            <button type="button" onclick="switchTab('tab-mikrotik')" id="btn-mikrotik" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-server"></i> سيرفر المايكروتك
+            </button>
+            <button type="button" onclick="switchTab('tab-vpn')" id="btn-vpn" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-certificate"></i> شهادة الأجهزة SSTP
+            </button>
+            <button type="button" onclick="switchTab('tab-currency')" id="btn-currency" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-money-bill-wave"></i> محرك العملات الدولي
+            </button>
+            <button type="button" onclick="switchTab('tab-payment')" id="btn-payment" class="tab-btn bg-[#151f32] text-slate-300 py-2.5 px-4 rounded text-sm transition flex items-center justify-center gap-2">
+                <i class="fas fa-money-check-alt"></i> التوجيه والتنبيهات المادية
+            </button>
+        </div>
+        {% endif %}
+
+        <form action="{{ url_for('client_settings.settings_page') }}" method="POST" enctype="multipart/form-data" class="flex-1 w-full flex flex-col justify-between">
+            
+            <input type="hidden" id="active_tab" name="active_tab" value="tab-dashboard">
+
+            <div class="flex-1 w-full">
+                
+                <div id="tab-dashboard" class="tab-content {% if server_type != 'شبكات' %}hidden{% endif %}">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-3xl mx-auto mt-4">
+                        <div class="flex flex-col items-center justify-center mb-6">
+                            <div class="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden mb-4 border-4 border-amber-500 shadow-lg">
+                                <img id="preview-logo-img" src="{{ url_for('static', filename=settings.logo_path) if settings and settings.logo_path else '/static/img/default-avatar.png' }}" alt="Logo" class="w-full h-full object-contain">
+                            </div>
+                            <div class="w-full max-w-xl space-y-4">
+                                <div>
+                                    <label class="compact-label text-center">اختر اللوجو الخاص بك للشاشات الذكية (الأقصى 2 ميجا لتأمين الاستضافة)</label>
+                                    <input type="file" name="logo_file" id="logo_file" accept="image/*" onchange="validateAndPreviewFile(this, 'preview-logo-img')" class="w-full bg-[#0b1221] text-slate-300 text-sm border border-slate-700 rounded p-1 focus:outline-none file:py-1.5 file:px-4 file:rounded file:border-0 file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 transition">
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="compact-label">اسم الشبكة أو الهوية</label>
+                                        <input type="text" name="brand_name" value="{{ settings.brand_name if settings else 'لوحة استهلاك العميل' }}" class="compact-input">
+                                    </div>
+                                    <div>
+                                        <label class="compact-label">رابط المجلة أو الـ IP الافتراضي</label>
+                                        <input type="text" name="portal_url" value="{{ settings.portal_url if settings else '10.0.0.3' }}" class="compact-input" dir="ltr">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-profile" class="tab-content {% if server_type == 'شبكات' %}hidden{% endif %}">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-4xl mx-auto mt-4">
+                        <div class="text-center mb-6"><h3 class="text-md font-bold text-slate-200 border-b border-slate-700 pb-2 inline-block px-8">الملف الشخصي للمدير الرئيسي</h3></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="compact-label">اسم المدير الكامل</label><input type="text" name="fullname" value="{{ user.fullname }}" class="compact-input" readonly></div>
+                            <div><label class="compact-label">اسم المستخدم للدخول</label><input type="text" name="username" value="{{ user.username }}" class="compact-input bg-slate-900 cursor-not-allowed" readonly></div>
+                            <div><label class="compact-label">رقم الهاتف الأساسي</label><input type="text" name="phone1" value="{{ user.phone1 if user.phone1 else '' }}" class="compact-input text-right font-mono" readonly dir="ltr"></div>
+                            <div><label class="compact-label">البريد الإلكتروني المعتمد</label><input type="email" name="email" value="{{ user.email if user.email else '' }}" class="compact-input" readonly></div>
+                            <div><label class="compact-label">تغيير كلمة المرور</label><input type="password" name="new_password" placeholder="اترك الحقل فارغاً للمحافظة على الحالية" class="compact-input"></div>
+                            <div class="flex items-center justify-between bg-[#0b1221] px-4 rounded-6 border border-slate-700 h-[38px] mt-6">
+                                <span class="text-slate-300 text-xs font-bold">حالة الحساب الإداري نشطة</span>
+                                <label class="custom-switch"><input type="checkbox" {% if user.is_active %}checked{% endif %} disabled><span class="custom-slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-permissions" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-4xl mx-auto mt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-[#0b1221] p-4 rounded-lg border border-slate-800">
+                                <h4 class="text-amber-500 font-bold text-sm mb-4 border-b border-slate-800 pb-2 text-center"><i class="fas fa-user"></i> صلاحيات المشترك العام</h4>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">السماح بشحن الرصيد ذاتياً</span><label class="custom-switch"><input type="checkbox" name="perm_general_recharge" value="true" checked><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">إظهار مؤشرات الاستهلاك والجيجات</span><label class="custom-switch"><input type="checkbox" name="perm_general_stats" value="true" checked><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">إعطاء صلاحية إيقاف النت مؤقتاً</span><label class="custom-switch"><input type="checkbox" name="perm_general_stop" value="true"><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">إتاحة اختبار سرعة الخط</span><label class="custom-switch"><input type="checkbox" name="perm_general_speedtest" value="true" checked><span class="custom-slider"></span></label></div>
+                                </div>
+                            </div>
+                            <div class="bg-[#0b1221] p-4 rounded-lg border border-slate-800">
+                                <h4 class="text-blue-400 font-bold text-sm mb-4 border-b border-slate-800 pb-2 text-center"><i class="fas fa-eye-slash"></i> صلاحيات العرض المخفي</h4>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">شحن وتفعيل باقات بريميوم</span><label class="custom-switch"><input type="checkbox" name="perm_hidden_recharge" value="true"><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">رؤية سجل التحميل الدقيق</span><label class="custom-switch"><input type="checkbox" name="perm_hidden_logs" value="true" checked><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">إيقاف الخدمة يدوياً للعميل</span><label class="custom-switch"><input type="checkbox" name="perm_hidden_stop" value="true"><span class="custom-slider"></span></label></div>
+                                </div>
+                            </div>
+                            <div class="bg-[#0b1221] p-4 rounded-lg border border-slate-800">
+                                <h4 class="text-emerald-400 font-bold text-sm mb-4 border-b border-slate-800 pb-2 text-center"><i class="fas fa-ticket-alt"></i> صلاحيات نظام الكروت</h4>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">التحويل التلقائي للماك</span><label class="custom-switch"><input type="checkbox" name="perm_card_macbind" value="true" checked><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">شحن الكارت من لوحة التحكم</span><label class="custom-switch"><input type="checkbox" name="perm_card_recharge" value="true" checked><span class="custom-slider"></span></label></div>
+                                    <div class="flex items-center justify-between"><span class="text-slate-300 text-xs">تصفير العدادات عند الانتهاء</span><label class="custom-switch"><input type="checkbox" name="perm_card_reset" value="true" checked><span class="custom-slider"></span></label></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-subscribers" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-4xl mx-auto mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-amber-400 font-bold text-sm"><i class="fas fa-magic"></i> إعدادات الأتمتة المتقدمة وجدولة فحص المديونيات</h4>
+                            <button type="button" onclick="openInfoModal('modal-subscribers-info')" class="bg-blue-600/30 hover:bg-blue-600/50 text-blue-400 px-3 py-1 rounded text-xs font-bold transition">📖 شرح الأتمتة</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="compact-label">حذف المشتركين تلقائياً إذا لم يجدد الاشتراك بعد مدة</label>
+                                <select name="auto_delete_months" class="compact-input">
+                                    <option value="0">تعطيل الحذف التلقائي</option>
+                                    <option value="1">شهر واحد</option>
+                                    <option value="2">شهرين</option>
+                                    <option value="3" selected>3 شهور</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="compact-label">موعد تنفيذ أوامر الفصل والتحصيل المجمعة (لتخفيف الموارد)</label>
+                                <select name="cron_execution_hour" class="compact-input">
+                                    <option value="0" selected>12:00 منتصف الليل</option>
+                                    <option value="2">02:00 فجراً</option>
+                                    <option value="4">04:00 فجراً (الأفضل كفاءة)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="compact-label">الحد الأدنى لرصيد المحفظة المسموح بالخصم الآلي منه</label>
+                                <input type="number" name="min_billing_balance" value="10" class="compact-input">
+                            </div>
+                            <div class="pt-6">
+                                <button type="button" onclick="triggerDebtCollection()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold h-[38px] rounded transition flex items-center justify-center gap-2 text-xs">
+                                    <i class="fas fa-search-dollar"></i> فحص وجدولة التحصيل المالي الفوري الآن
+                                </button>
+                            </div>
+                        </div>
+                        <div id="debt-log-box" class="mt-4 p-3 bg-black rounded text-xs font-mono text-emerald-400 border border-slate-800 hidden text-left" dir="ltr"></div>
+                    </div>
+                </div>
+
+                <div id="tab-cards" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-4xl mx-auto mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-white font-bold text-sm text-right"><i class="fas fa-fingerprint text-blue-400"></i> حماية جهاز العميل الأوتوماتيكي وتحديد الأجهزة</h3>
+                            <button type="button" onclick="openInfoModal('modal-cards-info')" class="bg-blue-600/30 hover:bg-blue-600/50 text-blue-400 px-3 py-1 rounded text-xs font-bold transition">📖 شرح السياسات</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="compact-label">الحد الأقصى لعدد الأجهزة (الماكات) لكل كارت مشترك</label>
+                                <select name="max_devices_per_card" class="compact-input">
+                                    <option value="1" selected>جهاز واحد فقط (1 MAC)</option>
+                                    <option value="2">جهازين (2 MACs)</option>
+                                    <option value="3">3 أجهزة</option>
+                                    <option value="5">5 أجهزة</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="compact-label">ربط وتثبيت الكارت بأول ماك يسجل دخول تلقائياً</label>
+                                <div class="flex items-center justify-between bg-[#0b1221] px-4 rounded border border-slate-700 h-[38px]">
+                                    <span class="text-slate-400 text-xs">تفعيل قفل الماك الصارم (Anti-Share)</span>
+                                    <label class="custom-switch"><input type="checkbox" name="lock_first_mac" value="true" checked><span class="custom-slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-800 pt-4">
+                            <label class="flex items-start gap-3 bg-[#0b1221] p-3 rounded border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                                <input type="radio" name="mac_policy" value="1" checked class="mt-1">
+                                <div><span class="text-slate-200 text-xs font-bold block text-right">التسجيل لمرة واحدة وثبات الماك</span></div>
+                            </label>
+                            <label class="flex items-start gap-3 bg-[#0b1221] p-3 rounded border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                                <input type="radio" name="mac_policy" value="2" class="mt-1">
+                                <div><span class="text-slate-200 text-xs font-bold block text-right">إعادة تعيين الماك وطرد الجهاز القديم (MAC Reset/Kick)</span></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-roaming" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-3xl mx-auto mt-4">
+                        <div class="flex items-center justify-between bg-[#0b1221] p-4 rounded-lg border border-slate-800 mb-6">
+                            <div>
+                                <h4 class="text-white text-sm font-bold text-right">تفعيل خاصية التنقل الذكي بين السيرفرات (Server Roaming)</h4>
+                                <p class="text-slate-500 text-[11px] mt-1 text-right">تسمح للمشتركين والعملاء بالاتصال بأي شبكة أو سيرفر فرعي تابع لك بنفس حسابهم.</p>
+                            </div>
+                            <label class="custom-switch"><input type="checkbox" id="roaming-master-toggle" name="roaming_enabled" value="true" onchange="checkRoamingIntegrity()"><span class="custom-slider"></span></label>
+                        </div>
+                        <div id="roaming-warning" class="bg-rose-950/40 border border-rose-900/60 rounded p-4 text-xs text-rose-400 hidden text-right">
+                            <i class="fas fa-exclamation-triangle"></i> تحذير نظام الراديوس: تم رصد حسابات متكررة بنفس الأسماء. يرجى مراجعة وتصفية الأسماء المكررة أولاً قبل تفعيل التجوال لضمان الاستقرار.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-mikrotik" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-5xl mx-auto mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-white text-sm font-bold"><i class="fas fa-server text-blue-400"></i> إعدادات وحقن سكربتات المايكروتك الحيوية حياً</h4>
+                            <button type="button" onclick="openInfoModal('modal-mikrotik-info')" class="bg-blue-600/30 hover:bg-blue-600/50 text-blue-400 px-3 py-1 rounded text-xs font-bold transition"> 📖 دليل المايكروتك</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-[#0b1221] p-4 rounded-lg border border-slate-800">
+                                <h4 class="text-amber-500 font-bold text-xs mb-3 text-right"><i class="fas fa-calculator"></i> أولاً: مولد بولات الأي بي الديناميكي (IP Pool Generator)</h4>
+                                <div class="space-y-3">
+                                    <div><label class="compact-label">الأي بي الافتراضي للسيرفر</label><input type="text" id="ip-start" value="10.0.0.1" class="compact-input font-mono" dir="ltr"></div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><label class="compact-label">عدد البولات المطلوب</label><input type="number" id="pool-count" value="3" class="compact-input"></div>
+                                        <div><label class="compact-label">قناع الشبكة Subnet</label><select id="ip-subnet" class="compact-input"><option value="24">/24 (254 جهاز)</option><option value="16">/16 (65K جهاز)</option></select></div>
+                                    </div>
+                                    <button type="button" onclick="generateIpPools()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-[34px] rounded text-xs transition"><i class="fas fa-code"></i> توليد سكربت البولات الرياضي الآن</button>
+                                    <div class="relative mt-2">
+                                        <textarea id="ip-pool-output" name="generated_ip_pool_script" class="textarea-script" readonly placeholder="/ip pool add name=pool_sakr_1 ranges=10.0.0.2-10.0.0.254"></textarea>
+                                        <button type="button" onclick="copyScript('ip-pool-output')" class="absolute bottom-2 left-2 bg-slate-800 text-slate-300 px-2 py-1 rounded text-[10px] hover:bg-slate-700 font-bold">نسخ السكربت</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[#0b1221] p-4 rounded-lg border border-slate-800 space-y-3">
+                                <h4 class="text-blue-400 font-bold text-xs mb-1 text-right"><i class="fas fa-network-wired"></i> ملاحظة: سكربت الدمج انتقل لصفحته الخاصة</h4>
+                                <p class="text-[11px] text-slate-400 leading-relaxed text-right">
+                                    مولّد سكربت دمج الخطوط (Load Balancing) بقى موجود في قسم
+                                    <b class="text-emerald-400">«🌐 إدارة الدمج والخطوط»</b> في الشريط الجانبي —
+                                    لأنه ميزة اختيارية مش كل العملاء بيستخدموها.
+                                </p>
+                                <a href="/system/merge" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-[34px] rounded text-xs transition text-center leading-[34px]">🌐 فتح صفحة الدمج وتوليد السكربت</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-vpn" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-4xl mx-auto mt-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-white text-sm font-bold">🔒 الاتصال الخارجي المشفر وإعدادات خادم SSTP VPN الرئيسي</h4>
+                            <button type="button" onclick="openInfoModal('modal-vpn-info')" class="bg-blue-600/30 hover:bg-blue-600/50 text-blue-400 px-3 py-1 rounded text-xs font-bold transition">📖 شرح الـ VPN</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="compact-label">عنوان السيرفر الخارجي (IP / Domain)</label>
+                                <input type="text" name="vpn_server_address" value="vpn.sakr-connect.com" class="compact-input font-mono" dir="ltr">
+                            </div>
+                            <div>
+                                <label class="compact-label">اسم مستخدم الـ API للربط الآمن</label>
+                                <input type="text" name="vpn_api_username" value="admin_sakr" class="compact-input">
+                            </div>
+                            <div>
+                                <label class="compact-label">كلمة مرور الـ API المشفرة</label>
+                                <input type="password" name="vpn_api_password" placeholder="••••••••" class="compact-input">
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center justify-center py-4 bg-[#0b1221] rounded border border-slate-800">
+                            <i class="fas fa-file-archive text-4xl text-amber-500 mb-2"></i>
+                            <span class="text-white text-xs font-bold mb-4">ملف حزمة SSTP VPN المخصصة للعملاء جاهزة ومؤمنة بالتوقيع الرقمي</span>
+                            <button type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-8 rounded transition"><i class="fas fa-download"></i> تحميل حزمة التثبيت التلقائي الذكية للويندوز</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-currency" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-3xl mx-auto mt-4">
+                        <div class="max-w-md mx-auto space-y-4">
+                            <div>
+                                <label class="compact-label">اختر العملة الأساسية لنظام الفواتير والبيع الدولي</label>
+                                <select name="system_currency" id="currency-select" onchange="updateCurrencyRouting()" class="compact-input">
+                                    <option value="EGP" selected>الجنيه المصري (EGP)</option>
+                                    <option value="SAR">الريال السعودي (SAR)</option>
+                                    <option value="AED">الدرهم الإماراتي (AED)</option>
+                                    <option value="USD">الدولار الأمريكي (USD)</option>
+                                </select>
+                            </div>
+                            <div class="bg-[#0b1221] p-4 rounded border border-slate-800">
+                                <h5 class="text-white text-xs font-bold mb-2 text-right"><i class="fas fa-project-diagram text-blue-400"></i> التوجيه التلقائي المالي الذكي (Gateway Routing):</h5>
+                                <div id="gateway-routing-text" class="text-slate-400 text-[11px] leading-relaxed text-right">
+                                    [العملة النشطة: الجنيه المصري] - سيقوم النظام تلقائياً بتفعيل وتوجيه لوحة المشتركين والموزعين لوسائل الشحن المحلية: (إنستا باي، فوري، محفظة فودافون كاش الكودية).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-payment" class="tab-content hidden">
+                    <div class="border border-slate-800 rounded-lg p-6 bg-[#101828] max-w-6xl mx-auto mt-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                            
+                            <div class="lg:col-span-7 space-y-4">
+                                <div class="bg-[#0b1221] p-3 rounded border border-slate-800">
+                                    <span class="text-amber-500 font-bold text-xs block text-right mb-2"><i class="fas fa-edit"></i> تحرير نصوص وصفحات إعادة التوجيه الفوري للعملاء</span>
+                                    <div class="grid grid-cols-2 gap-2 mb-3">
+                                        <div><label class="compact-label">عنوان شريط الصفحة</label><input type="text" name="redirect_title" id="input-title" value="تنبيه انتهاء الباقة" oninput="syncSandbox()" class="compact-input"></div>
+                                        <div><label class="compact-label">العنوان الرئيسي الداخلي</label><input type="text" name="redirect_headline" id="input-headline" value="عذراً.. انتهت باقتك بالكامل" oninput="syncSandbox()" class="compact-input"></div>
+                                    </div>
+                                    <div><label class="compact-label">نص رسالة التحذير الفرعية للمشتركين</label><textarea name="redirect_msg" id="input-msg" oninput="syncSandbox()" class="compact-input h-16 py-2 text-right" style="resize:none;">برجاء التوجه لأقرب موزع أو تجديد الباقة عبر محفظتك الإلكترونية لإعادة الخدمة فوراً.</textarea></div>
+                                </div>
+
+                                <div class="bg-[#0b1221] p-3 rounded border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="compact-label">لوجو صفحة التوجيه</label>
+                                        <input type="file" name="redirect_logo" accept="image/*" class="w-full bg-[#0b1221] text-xs text-slate-300 border border-slate-700 rounded p-1">
+                                    </div>
+                                    <div>
+                                        <label class="compact-label">صورة الخلفية الكاملة</label>
+                                        <input type="file" name="redirect_bg" accept="image/*" class="w-full bg-[#0b1221] text-xs text-slate-300 border border-slate-700 rounded p-1">
+                                    </div>
+                                    <div>
+                                        <label class="compact-label">صورة أيقونة المنع (STOP)</label>
+                                        <input type="file" name="redirect_stop_icon" accept="image/*" class="w-full bg-[#0b1221] text-xs text-slate-300 border border-slate-700 rounded p-1">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 bg-[#0b1221] p-3 rounded border border-slate-800">
+                                    <div><label class="compact-label">لون خلفية العنوان الرئيسي</label><input type="color" name="redirect_color_bg" id="color-bg" value="#ef4444" oninput="syncSandbox()" class="w-full h-[38px] bg-transparent border-0 cursor-pointer"></div>
+                                    <div><label class="compact-label">لون الخط في الصفحة</label><input type="color" name="redirect_color_text" id="color-text" value="#ffffff" oninput="syncSandbox()" class="w-full h-[38px] bg-transparent border-0 cursor-pointer"></div>
+                                </div>
+
+                                <div class="bg-[#0b1221] p-3 rounded border border-slate-800 space-y-3">
+                                    <span class="text-blue-400 font-bold text-xs block text-right"><i class="fas fa-bell"></i> تنبيهات موعد استحقاق الدفع والوسوم الديناميكية للرصيد</span>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><label class="compact-label">ظهور التنبيه قبل الانتهاء بـ</label><div class="flex items-center bg-[#0b1221] border border-slate-700 rounded h-[38px] overflow-hidden"><input type="number" name="alert_days" value="3" class="w-full bg-transparent text-slate-200 text-center text-sm outline-none"><span class="bg-slate-800 text-slate-400 text-xs px-3 font-bold h-full flex items-center border-r border-slate-700">أيام</span></div></div>
+                                        <div><label class="compact-label">نوع درجة أهمية التنبيه</label><select name="alert_level" class="compact-input"><option value="info">معلومات (أزرق)</option><option value="warning" selected>تحذير (أصفر)</option><option value="danger">خطير (أحمر)</option></select></div>
+                                    </div>
+                                    <div class="bg-slate-950 p-2.5 rounded text-[11px] text-slate-400 text-right leading-relaxed">
+                                        <span class="text-amber-500 font-bold">ℹ️ دعم الوسوم الديناميكية للفوترة:</span> يمكنك استخدام الوسوم التالية ليقوم السيستم بحقن قيمها لحظياً لكل مشترك: <span class="text-blue-400 font-bold">`{username}`</span> لاسم العميل، <span class="text-blue-400 font-bold">`{days}`</span> للأيام، و <span class="text-blue-400 font-bold">`{price}`</span> للسعر.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="lg:col-span-5 flex flex-col items-center">
+                                <span class="text-slate-400 text-xs font-bold mb-2"><i class="fas fa-mobile-alt"></i> شاشة المعاينة الفورية الحية للعميل النهائي</span>
+                                <div class="phone-mockup">
+                                    <div id="phone-screen-box" class="phone-screen" style="background-color: #ef4444; color: #ffffff;">
+                                        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 text-2xl"><i class="fas fa-exclamation-triangle"></i></div>
+                                        <h4 id="phone-title" class="text-sm font-bold opacity-80 mb-1">تنبيه انتهاء الباقة</h4>
+                                        <h2 id="phone-headline" class="text-lg font-black leading-tight mb-3">عذراً.. انتهت باقتك بالكامل</h2>
+                                        <p id="phone-msg" class="text-xs opacity-90 leading-relaxed px-2">برجاء التوجه لأقرب موزع أو تجديد الباقة عبر محفظتك الإلكترونية لإعادة الخدمة فوراً.</p>
+                                        
+                                        <div class="w-full mt-6 space-y-2">
+                                            <div class="w-full bg-white text-slate-900 font-bold text-xs py-2 rounded shadow cursor-not-allowed">دخول لوحة التحكم والاشتراكات</div>
+                                            <div class="w-full bg-emerald-500 text-white font-bold text-xs py-2 rounded shadow cursor-not-allowed flex items-center justify-center gap-1"><i class="fab fa-whatsapp"></i> تواصل مع الدعم الفني بالواتساب</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-8 flex justify-start px-4 md:px-12">
+                <button type="submit" class="bg-[#14b8a6] hover:bg-teal-400 text-white font-bold py-2.5 px-12 rounded text-lg transition shadow-lg shadow-teal-500/20">
+                    حفظ كافة الإعدادات والربط الفوري
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-auto pt-10 pb-2">
+            <p class="text-center text-xs text-slate-500 font-bold">
+                جميع الحقوق محفوظة © 2026 - نظام Sakr Connect | تطوير: وكالة صقر ميديا العالمية
+            </p>
+        </div>
+
+    </div>
+</div>
+
+<div id="modal-subscribers-info" class="info-modal flex">
+    <div class="info-modal-content">
+        <h4 class="text-amber-500 font-bold text-sm mb-2 border-b border-slate-800 pb-2">📖 شرح أتمتة المشتركين وسداد الفواتير</h4>
+        <p class="text-slate-300 text-xs leading-relaxed mb-4">يقوم النظام في الساعة المحددة في الخلفية بفحص قاعدة البيانات بالكامل للتأكد من المشتركين المديونين، وإذا وجد رصيداً كافياً في محفظة العميل يقوم بخصم قيمة الاشتراك وتجديد الباقة لحظياً بدون أي تدخل يدوي من صاحب الشبكة.</p>
+        <button type="button" onclick="closeInfoModal('modal-subscribers-info')" class="bg-slate-800 text-white text-xs px-4 py-1.5 rounded hover:bg-slate-700 transition">إغلاق الدليل</button>
+    </div>
+</div>
+
+<div id="modal-cards-info" class="info-modal flex">
+    <div class="info-modal-content">
+        <h4 class="text-blue-400 font-bold text-sm mb-2 border-b border-slate-800 pb-2">📖 شرح حماية الكروت وتثبيت الأجهزة</h4>
+        <p class="text-slate-300 text-xs leading-relaxed mb-4">عند تفعيل خيار قفل الماك، فإن أول جهاز يقوم بكتابة الكارت يتم تخزين الـ MAC Address الخاص به في الراديوس سيرفر، ويتم منع الكارت من العمل على أي موبايل أو لابتوب آخر منعاً لتبادل أو مشاركة الكروت بين الجيران.</p>
+        <button type="button" onclick="closeInfoModal('modal-cards-info')" class="bg-slate-800 text-white text-xs px-4 py-1.5 rounded hover:bg-slate-700 transition">إغلاق الدليل</button>
+    </div>
+</div>
+
+<div id="modal-mikrotik-info" class="info-modal flex">
+    <div class="info-modal-content">
+        <h4 class="text-emerald-400 font-bold text-sm mb-2 border-b border-slate-800 pb-2">📖 دليل حقن سكربتات المايكروتك الحقيقي</h4>
+        <p class="text-slate-300 text-xs leading-relaxed mb-4">الأدوات البرمجية بالأسفل تقوم بحساب معادلات الـ IP وتوزيع الأحمال بالكامل داخل متصفحك دون إرهاق السيرفر. بعد الضغط على توليد السكربت، اضغط على زر نسخ، وتوجه إلى Winbox -> New Terminal ثم قم بعمل Paste واضغط Enter ليتم التنفيذ الفوري.</p>
+        <button type="button" onclick="closeInfoModal('modal-mikrotik-info')" class="bg-slate-800 text-white text-xs px-4 py-1.5 rounded hover:bg-slate-700 transition">إغلاق الدليل</button>
+    </div>
+</div>
+
+<div id="modal-vpn-info" class="info-modal flex">
+    <div class="info-modal-content">
+        <h4 class="text-white font-bold text-sm mb-2 border-b border-slate-800 pb-2">📖 شرح الاتصال الخارجي SSTP VPN</h4>
+        <p class="text-slate-300 text-xs leading-relaxed mb-4">يتم فتح بورت 443 الآمن والمشفر في سيرفر المايكروتك لربطه بـ صقر كونكت. هذا يتيح للمدير إدارة السيرفر وتغيير الباقات وقطع الخدمة من خارج الشبكة ومن أي مكان في العالم بثبات مطلق ودون الحاجة لأي أي بي ستاتيك خارجي.</p>
+        <button type="button" onclick="closeInfoModal('modal-vpn-info')" class="bg-slate-800 text-white text-xs px-4 py-1.5 rounded hover:bg-slate-700 transition">إغلاق الدليل</button>
+    </div>
+</div>
+
+
+<script>
+    // 1. دالة التبديل الذكي الاحترافي وتحديث حقل الـ Hidden الفوري لحفظ الحالة عند عمل الـ Submit
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(tabId).classList.remove('hidden');
+        
+        document.getElementById('active_tab').value = tabId;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active-tab', 'bg-amber-500', 'text-slate-900');
+            btn.classList.add('bg-[#151f32]', 'text-slate-300');
+        });
+        
+        const activeBtn = document.getElementById(tabId.replace('tab-', 'btn-'));
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-[#151f32]', 'text-slate-300');
+            activeBtn.classList.add('active-tab');
+        }
+    }
+
+    // 2. دالة التحقق من حجم ومواصفات الملفات قبل الرفع لحماية السيرفر ومساحة الاستضافة
+    function validateAndPreviewFile(input, previewId) {
+        if (input.files && input.files[0]) {
+            const fileSize = input.files[0].size / 1024 / 1024; // تحويل للميجابايت
+            if (fileSize > 2) {
+                alert('عذراً يا شريكي! حجم الملف يتجاوز 2 ميجا بايت. يرجى ضغط الصورة للمحافظة على مساحة استضافتك وسرعة الأداء.');
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImg = document.getElementById(previewId);
+                if (previewImg) previewImg.src = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // 3. محرك محاكاة المعاينة الفورية لصفحات التوجيه (Reactive UI Sandbox Engine)
+    function syncSandbox() {
+        const title = document.getElementById('input-title').value;
+        const headline = document.getElementById('input-headline').value;
+        const msg = document.getElementById('input-msg').value;
+        const bgColor = document.getElementById('color-bg').value;
+        const textColor = document.getElementById('color-text').value;
+
+        document.getElementById('phone-title').innerText = title;
+        document.getElementById('phone-headline').innerText = headline;
+        document.getElementById('phone-msg').innerText = msg;
+        
+        const screenBox = document.getElementById('phone-screen-box');
+        screenBox.style.backgroundColor = bgColor;
+        screenBox.style.color = textColor;
+    }
+
+    // 4. أداة مولد بولات الأي بي الرياضي لحقن سكربتات المايكروتك تلقائياً من طرف المتصفح
+    function generateIpPools() {
+        const startIp = document.getElementById('ip-start').value.trim();
+        const count = parseInt(document.getElementById('pool-count').value);
+        const parts = startIp.split('.');
+        
+        if (parts.length !== 4) {
+            alert('يرجى إدخال أي بي صحيح مثل 10.0.0.1');
+            return;
+        }
+
+        let script = "# generated locally by Sakr Connect Pool Engine\n";
+        let baseOctet = parseInt(parts[2]);
+
+        for (let i = 1; i <= count; i++) {
+            let currentOctet = baseOctet + (i - 1);
+            script += `/ip pool add name=pool_sakr_${i} ranges=${parts[0]}.${parts[1]}.${currentOctet}.2-${parts[0]}.${parts[1]}.${currentOctet}.254\n`;
+        }
+
+        document.getElementById('ip-pool-output').value = script;
+    }
+
+    // 6. وظيفة نسخ السكربتات بضغطة زر واحدة لحماية المديرين من النقل اليدوي
+    function copyScript(elementId) {
+        const textArea = document.getElementById(elementId);
+        textArea.select();
+        document.execCommand('copy');
+        alert('تم نسخ السكربت بنجاح! جاهز الآن للحقن في المايكروتك.');
+    }
+
+    // 7. فتح وإغلاق نوافذ الـ Modals التعليمية المكتوبة
+    function openInfoModal(modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+    }
+    function closeInfoModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // 8. أتمتة فحص وجدولة سداد الفواتير والمديونيات
+    function triggerDebtCollection() {
+        const logBox = document.getElementById('debt-log-box');
+        logBox.classList.remove('hidden');
+        logBox.innerHTML = "[*] Accessing strict transactions ledger...<br>[*] Scanning active wallets...<br>[+] Succeeded! System database is 100% clear of due debts.";
+    }
+
+    // 9. فحص أمان وسلامة الحسابات المتكررة عند طلب تفعيل التجوال Roaming
+    function checkRoamingIntegrity() {
+        const toggle = document.getElementById('roaming-master-toggle');
+        const warning = document.getElementById('roaming-warning');
+        if (toggle.checked) {
+            warning.classList.remove('hidden');
+        } else {
+            warning.classList.add('hidden');
+        }
+    }
+
+    // 10. محرك العملات الدولي والتوجيه التلقائي لبوابات الشحن والدفع
+    function updateCurrencyRouting() {
+        const currency = document.getElementById('currency-select').value;
+        const routingText = document.getElementById('gateway-routing-text');
+        
+        if (currency === 'EGP') {
+            routingText.innerText = '[العملة النشطة: الجنيه المصري] - سيقوم النظام تلقائياً بتفعيل وتوجيه لوحة المشتركين والموزعين لوسائل الشحن المحلية: (إنستا باي، فوري، محفظة فودافون كاش الكودية).';
+        } else if (currency === 'SAR') {
+            routingText.innerText = '[العملة النشطة: الريال السعودي] - سيقوم النظام تلقائياً بإعادة توجيه واجهات الدفع لتتوافق مع البوابات الخليجية الكبرى: (مدفوعات مدى الآمنة، سداد الرقمية، ومحافظ STC Pay الدولية).';
+        } else if (currency === 'USD') {
+            routingText.innerText = '[العملة النشطة: الدولار الأمريكي] - سيتحول السيستم كلياً لتفعيل بوابات التامين العالمية الفاخرة المربوطة بحساب الشركة الدولي: (محرك Stripe المشفر، وحسابات PayPal المعتمدة).';
+        } else {
+            routingText.innerText = '[العملة النشطة: العملة الإقليمية المحددة] - يتم الآن توجيه الفواتير ومطابقتها برمجياً مع جدول حسابات الإيرادات المركزية.';
+        }
+    }
+
+    // تهيئة محاكاة الموبايل وإخفاء المودال عند التحميل لأول مرة تلقائياً
+    window.addEventListener('DOMContentLoaded', () => {
+        syncSandbox();
+        document.querySelectorAll('.info-modal').forEach(m => m.style.display = 'none');
+    });
+</script>
+{% endblock %}

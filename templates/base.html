@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title | default('Sakr Connect | Enterprise ISP & Radius Management') }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        
+        @keyframes ticker-infinite { 
+            0% { transform: translate3d(-100vw, 0, 0); } 
+            100% { transform: translate3d(100%, 0, 0); } 
+        }
+        .security-ticker-wrap { overflow: hidden; width: 100%; box-sizing: border-box; position: relative; }
+        .security-ticker-inner { display: inline-block; white-space: nowrap; animation: ticker-infinite 35s linear infinite; }
+        .security-ticker-inner:hover { animation-play-state: paused; cursor: pointer; }
+        
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .sidebar-transition { transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white flex h-screen selection:bg-blue-500/30 overflow-hidden">
+
+    <aside id="main-sidebar" class="bg-slate-900 border-l border-slate-800 rounded-l-2xl flex flex-col h-full shadow-2xl z-20 w-80 sidebar-transition overflow-hidden shrink-0">
+        <div class="p-6 border-b border-slate-800 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-600/30 shrink-0">S</div>
+                <div class="whitespace-nowrap">
+                    <h1 class="text-lg font-extrabold text-white tracking-wide">Sakr <span class="text-blue-500">Connect</span></h1>
+                    <p class="text-[10px] text-slate-400 font-bold tracking-wider">Enterprise ISP & Radius Management</p>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-6 overflow-y-auto custom-scroll">
+            <div class="space-y-1">
+                <a href="/" class="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20 whitespace-nowrap">📊 لوحة القيادة الرئيسية</a>
+                <a href="/admin/monitor" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">🖥️ شاشة مراقبة الكروت</a>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-slate-500 font-extrabold mb-2 px-3 whitespace-nowrap">إدارة المشتركين والقطاعات</p>
+                <div class="space-y-1">
+                    <a href="/manage/pppoe" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">🏠 قطاع المنازل (PPPoE)</a>
+                    <a href="/manage/hotspot" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">☕ قطاع الكافيهات (Hotspot)</a>
+                    <a href="/manage/network" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">🌐 الشبكات الفرعية والموزعين</a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-slate-500 font-extrabold mb-2 px-3 whitespace-nowrap">الدعم الفني والاتصال</p>
+                <div class="space-y-1">
+                    <a href="/admin/support" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">🎫 لوحة التذاكر المركزية</a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-slate-500 font-extrabold mb-2 px-3 whitespace-nowrap">التحكم الفني والبنية التحتية</p>
+                <div class="space-y-1">
+                    <a href="/routers/map" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">📍 خريطة الروترات الجغرافية</a>
+                    <a href="/settings/mikrotik" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">⚙️ إعدادات ربط المايكروتيك</a>
+                    <a href="/manage/sessions" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">📡 إدارة جلسات البرودباند</a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-slate-500 font-extrabold mb-2 px-3 whitespace-nowrap">الحسابات والمنظومة المالية</p>
+                <div class="space-y-1">
+                    <a href="/admin/finance" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">💵 الدفتر المحاسبي المركزي</a>
+                    <a href="/settings/payment-gateways" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">💳 إعدادات بوابة الدفع</a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-slate-500 font-extrabold mb-2 px-3 whitespace-nowrap">الإدارة العامة والمنظومة</p>
+                <div class="space-y-1">
+                    <a href="/admin/profile" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">👤 الملف الشخصي</a>
+                    <a href="/settings/general" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-blue-400 transition-all text-[13px] font-semibold whitespace-nowrap">⚙️ إعدادات الموقع</a>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[11px] text-red-500 font-extrabold mb-2 px-3 whitespace-nowrap">منظومة الأمن والحماية</p>
+                <div class="space-y-1">
+                    <a href="/security/logs" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-all text-[13px] font-semibold whitespace-nowrap">🛡️ سجل التتبع الأمني المركزي</a>
+                    <a href="/security/attacks" class="flex items-center gap-2.5 py-2 px-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-all text-[13px] font-semibold whitespace-nowrap">🚨 مراقبة الاختراقات والهجمات</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 text-center bg-slate-900 shrink-0">
+            <a href="/logout" class="flex items-center justify-center gap-2 w-full py-2.5 mb-4 bg-rose-600/10 text-rose-500 border border-rose-900/50 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-sm font-bold shadow-sm whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                تسجيل الخروج
+            </a>
+            <p class="text-[10px] text-slate-500 font-bold">Powered by</p>
+            <p class="text-[12px] font-black text-blue-500 tracking-wide">Sakr Media Agency</p>
+            <p class="text-[10px] text-slate-500 mt-1 font-mono">01033379719 - 01033379719</p>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-950 relative">
+        
+        <header class="glass-panel mx-8 mt-6 p-4 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between shadow-xl gap-4 shrink-0 z-10">
+            <div class="flex items-center gap-3 justify-between lg:justify-start w-full lg:w-auto">
+                <button onclick="toggleSidebar()" class="w-10 h-10 bg-slate-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-colors text-white shrink-0 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                
+                <div class="flex items-center gap-2 border-r border-slate-800 pr-4">
+                    <div class="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-mono">
+                        {{ session.get('fullname', 'AD')[:2] | upper }}
+                    </div>
+                    <div>
+                        <p class="text-xs font-black text-slate-200">
+                            {{ session.get('fullname') | default('القيادة العليا', true) }}
+                        </p>
+                        <p class="text-[9px] text-slate-500 font-mono">Role: {{ session.get('role', 'Super Admin') | title }} | IP: {{ request.remote_addr if request is defined else '127.0.0.1' }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            {% if session.get('role') in ['admin', 'super_admin'] %}
+            <div class="flex-1 max-w-2xl w-full">
+                <form id="broadcast-form" class="flex items-center gap-2 relative">
+                    <select id="broadcast-target" class="bg-[#0b111e] border border-slate-700 rounded-lg px-2 py-2 text-[11px] text-slate-400 focus:outline-none focus:border-blue-500 font-bold shrink-0">
+                        <option value="all">🌐 بث عام للمنظومة</option>
+                        <option value="homes">🏠 قطاع المنازل</option>
+                        <option value="cafes">☕ قطاع الكافيهات</option>
+                        <option value="resellers">🤝 شبكات الموزعين</option>
+                    </select>
+                    <input type="text" id="broadcast-message" placeholder="اكتب رسالة التنبيه، الصيانة، أو التحذيرات الوقائية..." class="w-full bg-[#0b111e] border border-slate-700 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white focus:outline-none transition font-semibold shadow-inner" required>
+                    <button type="submit" id="broadcast-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-[11px] font-black transition whitespace-nowrap shadow-md shadow-blue-600/10">إرسال البث</button>
+                    <span id="broadcast-status" class="absolute -top-6 right-0 text-[10px] font-bold hidden"></span>
+                </form>
+            </div>
+            {% endif %}
+            
+            <div class="flex items-center gap-4 justify-end shrink-0 border-r border-slate-800 pr-4">
+                <div class="text-xs text-blue-400 font-mono font-black whitespace-nowrap" id="live-clock">00:00:00 م</div>
+            </div>
+        </header>
+
+        {% if session.get('role') not in ['admin', 'super_admin'] %}
+        <div class="mx-8 mt-4 bg-blue-900/30 border border-blue-800/50 rounded-lg px-4 py-2 text-center text-xs font-bold text-blue-200 shadow-inner">
+            {{ global_broadcast }}
+        </div>
+        {% endif %}
+
+        {% if session.get('role') in ['admin', 'super_admin'] %}
+        <section class="mx-8 mt-4 bg-slate-900/90 border border-red-900/30 rounded-xl px-4 py-2 flex items-center gap-3 shadow-lg shrink-0 overflow-hidden">
+            <div class="flex items-center gap-1.5 text-xs font-black text-rose-500 shrink-0 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20 font-mono animate-pulse">
+                <span>🚨</span> LIVE RADAR
+            </div>
+            <div class="flex-1 min-w-0 font-bold text-xs tracking-wide">
+                <div class="security-ticker-wrap">
+                    <div class="security-ticker-inner">
+                        {% if radar_logs %}
+                            {% for log in radar_logs %}
+                                {% if 'اختراق' in log.action or 'حرج' in log.action or 'فشل' in log.action or 'هجوم' in log.action %}
+                                    <span class="text-rose-400 ml-8 font-mono">🔴 [{{ log.action }}]: {{ log.device_info | default('تنبيه نظام') }} (MAC: {{ log.mac_address | default('غير متوفر') }})</span>
+                                {% elif 'تخطي' in log.action or 'VPN' in log.action or 'MAC' in log.action %}
+                                    <span class="text-amber-400 ml-8 font-mono">🟡 [{{ log.action }}]: {{ log.device_info | default('تنبيه نظام') }} (MAC: {{ log.mac_address | default('غير متوفر') }})</span>
+                                {% else %}
+                                    <span class="text-emerald-400 ml-8 font-mono">🟢 [{{ log.action }}]: {{ log.device_info | default('تنبيه نظام') }} (MAC: {{ log.mac_address | default('غير متوفر') }})</span>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-slate-400 ml-8 font-mono">✅ خوادم المنظومة مستقرة، لا توجد تهديدات أمنية نشطة حالياً.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <main class="flex-1 overflow-y-auto p-8 custom-scroll">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // التحكم في القائمة الجانبية
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            sidebar.classList.toggle('w-80');
+            sidebar.classList.toggle('w-0');
+        }
+        
+        // الساعة الحية
+        function updateLiveClock() {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = now.toLocaleTimeString('ar-EG', { hour12: true }) + " | UTC";
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        // نظام البث המوجه - AJAX (للإدارة فقط)
+        const broadcastForm = document.getElementById('broadcast-form');
+        if (broadcastForm) {
+            broadcastForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const btn = document.getElementById('broadcast-btn');
+                const statusSpan = document.getElementById('broadcast-status');
+                const msg = document.getElementById('broadcast-message').value;
+                const target = document.getElementById('broadcast-target').value;
+                
+                btn.innerText = 'جاري البث...';
+                btn.disabled = true;
+
+                fetch('/admin/api/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg, target: target })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    statusSpan.classList.remove('hidden', 'text-rose-400');
+                    statusSpan.classList.add('text-emerald-400');
+                    statusSpan.innerText = '✅ تم بث الرسالة بنجاح';
+                    setTimeout(() => statusSpan.classList.add('hidden'), 3000);
+                    document.getElementById('broadcast-message').value = '';
+                })
+                .catch(err => {
+                    statusSpan.classList.remove('hidden', 'text-emerald-400');
+                    statusSpan.classList.add('text-rose-400');
+                    statusSpan.innerText = '❌ حدث خطأ في البث';
+                })
+                .finally(() => {
+                    btn.innerText = 'إرسال البث';
+                    btn.disabled = false;
+                });
+            });
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

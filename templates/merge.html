@@ -1,0 +1,454 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="space-y-6 max-w-[1500px] mx-auto" dir="rtl">
+
+    <!-- ===================== الترويسة + مؤشر الحياة ===================== -->
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 shadow-xl">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-xl font-black text-white flex items-center gap-2">🌐 إدارة الدمج والخطوط (Load Balancing)</h1>
+                <p class="text-xs text-slate-400 mt-2 leading-relaxed max-w-2xl">
+                    لوحة تحكم حية لخطوط الإنترنت الخارجة (WAN). كل البيانات بتتسحب
+                    <b class="text-emerald-400">مباشرة من المايكروتيك</b> وتحدّث نفسها كل 5 ثواني.
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="flex items-center gap-2 text-[11px] font-bold text-emerald-400">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    LIVE
+                </span>
+                <span id="last-update" class="text-[10px] text-slate-500 font-mono" dir="ltr">--:--:--</span>
+                <button onclick="loadDashboard(true)" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition">🔄 تحديث</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== الإجماليات العالمية (KPI) ===================== -->
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div class="bg-gradient-to-br from-blue-900/40 to-[#0f172a] border border-blue-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-blue-400 font-bold">📶 إجمالي الخطوط</span>
+            <h2 id="k-lines" class="text-3xl font-black text-white mt-1">0</h2>
+            <p id="k-lines-sub" class="text-[10px] text-slate-500">جارِ التحميل...</p>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-900/40 to-[#0f172a] border border-emerald-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-emerald-400 font-bold">✅ خطوط شغالة</span>
+            <h2 id="k-up" class="text-3xl font-black text-white mt-1">0</h2>
+            <p id="k-up-sub" class="text-[10px] text-slate-500">-</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-900/40 to-[#0f172a] border border-amber-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-amber-400 font-bold">⚡ التحميل الكلي</span>
+            <h2 class="text-3xl font-black text-white mt-1"><span id="k-load">0</span> <span class="text-xs">Mbps</span></h2>
+            <p id="k-load-sub" class="text-[10px] text-slate-500">-</p>
+        </div>
+        <div class="bg-gradient-to-br from-purple-900/40 to-[#0f172a] border border-purple-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-purple-400 font-bold">📅 استهلاك اليوم</span>
+            <h2 class="text-3xl font-black text-white mt-1"><span id="k-gb-today">0</span> <span class="text-xs">GB</span></h2>
+            <p class="text-[10px] text-slate-500">مجموع نزول + صعود</p>
+        </div>
+        <div class="bg-gradient-to-br from-fuchsia-900/40 to-[#0f172a] border border-fuchsia-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-fuchsia-400 font-bold">🗓️ استهلاك الشهر</span>
+            <h2 class="text-3xl font-black text-white mt-1"><span id="k-gb-month">0</span> <span class="text-xs">GB</span></h2>
+            <p class="text-[10px] text-slate-500">من أول الشهر</p>
+        </div>
+        <div class="bg-gradient-to-br from-rose-900/40 to-[#0f172a] border border-rose-800/50 rounded-xl p-4 shadow-lg">
+            <span class="text-[10px] text-rose-400 font-bold">💾 إجمالي المنقول</span>
+            <h2 class="text-3xl font-black text-white mt-1"><span id="k-gb-total">0</span> <span class="text-xs">GB</span></h2>
+            <p class="text-[10px] text-slate-500">منذ آخر ضبط للعدادات</p>
+        </div>
+    </div>
+
+    <!-- ===================== عدادات السيرفرات والشبكات ===================== -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 text-center">
+            <span class="text-[10px] text-slate-400 font-bold">🖥️ السيرفرات</span>
+            <h3 id="k-routers" class="text-2xl font-black text-white mt-1">0</h3>
+            <p class="text-[10px] text-slate-600">مايكروتيك مربوط</p>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 text-center">
+            <span class="text-[10px] text-slate-400 font-bold">🟢 السيرفرات الردّاء</span>
+            <h3 id="k-routers-ok" class="text-2xl font-black text-emerald-400 mt-1">0</h3>
+            <p class="text-[10px] text-slate-600">استجاب للسحب</p>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 text-center">
+            <span class="text-[10px] text-slate-400 font-bold">🔴 السيرفرات المتعطلة</span>
+            <h3 id="k-routers-fail" class="text-2xl font-black text-rose-400 mt-1">0</h3>
+            <p class="text-[10px] text-slate-600">مجرّد / مغلق API</p>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 text-center">
+            <span class="text-[10px] text-slate-400 font-bold">🏢 الشبكات</span>
+            <h3 id="k-networks" class="text-2xl font-black text-white mt-1">0</h3>
+            <p class="text-[10px] text-slate-600">ضمن صلاحيتك</p>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 text-center">
+            <span class="text-[10px] text-slate-400 font-bold">🔌 خطوط معطّلة</span>
+            <h3 id="k-disabled" class="text-2xl font-black text-amber-400 mt-1">0</h3>
+            <p class="text-[10px] text-slate-600">متوقفة يدوياً</p>
+        </div>
+    </div>
+
+    <!-- ===================== كروت الخطوط ===================== -->
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div>
+                <h3 class="text-sm font-black text-white">📡 حالة كل خط (Live)</h3>
+                <p class="text-[10px] text-slate-500 mt-1">السرعة بتتحسب من فرق العدادات بين كل تحديث — من غير ما نثقل المايكروتيك.</p>
+            </div>
+            <div class="flex gap-2" id="line-filters">
+                <button data-f="all"  class="filter-btn active bg-slate-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">الكل</button>
+                <button data-f="wan"  class="filter-btn bg-slate-800 text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-lg">WAN فقط</button>
+                <button data-f="up"   class="filter-btn bg-slate-800 text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-lg">شغالة</button>
+                <button data-f="down" class="filter-btn bg-slate-800 text-slate-300 text-[11px] font-bold px-3 py-1.5 rounded-lg">مقطوعة</button>
+            </div>
+        </div>
+
+        <div id="lines-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <p class="text-xs text-slate-500 col-span-full text-center py-8">⏳ جارِ السحب من المايكروتيك...</p>
+        </div>
+    </div>
+
+    <!-- ===================== الشبكات ===================== -->
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
+        <h3 class="text-sm font-black text-white mb-1">🏢 تجميع حسب الشبكة</h3>
+        <p class="text-[10px] text-slate-500 mb-4">إجمالي خطوط كل شبكة وحملها اللحظي.</p>
+        <div id="nets-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <p class="text-xs text-slate-500 col-span-full text-center py-6">⏳ جارِ التحميل...</p>
+        </div>
+    </div>
+
+    <!-- ===================== مولّد سكربت الدمج ===================== -->
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5">
+        <h3 class="text-sm font-black text-white mb-1">⚙️ توليد سكربت الدمج</h3>
+        <p class="text-xs text-slate-400 mb-4">حطّ عدد خطوطك واضغط توليد — هيطلع سكربت كامل (IP + NAT + مسارات) تنسخه وتلصقه في تيرمنال المايكروتيك.</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">كرت WAN (نمط)</label>
+                <input id="lb-wan" value="ether1_wan" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">كرت الشبكة LAN</label>
+                <input id="lb-lan" value="ether2_lan" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">عدد الخطوط</label>
+                <input id="lb-count" type="number" min="1" max="64" value="2" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">الـ DNS</label>
+                <input id="lb-dns" value="8.8.8.8" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">طريقة IP</label>
+                <select id="lb-mode" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                    <option value="dhcp">DHCP (تلقائي)</option>
+                    <option value="static">Static (ثابت)</option>
+                </select></div>
+        </div>
+
+        <div id="lb-static-box" class="grid grid-cols-2 gap-3 mb-3 hidden">
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">بوابة كل خط {n}</label>
+                <input id="lb-gw" value="192.168.{n}.1" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">عنوان IP لكل خط {n}</label>
+                <input id="lb-ip" value="192.168.{n}.2/24" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono" dir="ltr"></div>
+        </div>
+
+        <div class="flex gap-2 mb-3">
+            <button onclick="generateLB()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 rounded-lg transition">🎲 بناء السكربت</button>
+            <button onclick="copyLB()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-5 py-2 rounded-lg transition">📋 نسخ السكربت</button>
+        </div>
+
+        <textarea id="lb-out" readonly dir="ltr"
+            class="w-full h-64 bg-[#0b111e] border border-slate-700 rounded-lg p-3 text-[11px] font-mono text-emerald-400 leading-relaxed"
+            placeholder="اضغط «بناء السكربت» هنا..."></textarea>
+    </div>
+
+</div>
+
+<script>
+/* ==================================================================
+   لوحة مراقبة الخطوط - حي (Polling كل 5 ثواني)
+   ================================================================== */
+let LB_FILTER = 'all';
+let LB_BUSY = false;
+
+function fmt(n, d = 0) {
+    return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function statusBadge(s) {
+    if (s === 'up')       return '<span class="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">شغّال</span>';
+    if (s === 'disabled') return '<span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">معطّل</span>';
+    return '<span class="text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">مقطوع</span>';
+}
+
+function passFilter(l) {
+    if (LB_FILTER === 'wan')  return l.is_wan;
+    if (LB_FILTER === 'up')   return l.status === 'up';
+    if (LB_FILTER === 'down') return l.status === 'down';
+    return true;
+}
+
+function renderLines(lines) {
+    const cap = (window.__GLOBALS__ && window.__GLOBALS__.line_capacity) || 30;
+    const grid = document.getElementById('lines-grid');
+    const shown = lines.filter(passFilter);
+
+    if (!shown.length) {
+        grid.innerHTML = '<p class="text-xs text-slate-500 col-span-full text-center py-8">لا توجد خطوط مطابقة. تأكد إن السيرفرات شغالة ومحفوظة في «السيرفرات».</p>';
+        return;
+    }
+
+    grid.innerHTML = shown.map(l => {
+        const pct = cap > 0 ? Math.min(100, Math.round(l.speed / cap * 100)) : 0;
+        const color = pct >= 90 ? 'bg-rose-500' : (pct >= 60 ? 'bg-amber-500' : 'bg-emerald-500');
+        const isOff = l.status !== 'up';
+        const btnLabel = l.disabled ? '▶️ تفعيل' : '⏸️ تعطيل';
+        const btnCls = l.disabled
+            ? 'bg-emerald-600 hover:bg-emerald-500'
+            : 'bg-slate-700 hover:bg-slate-600';
+        return `
+        <div class="bg-[#0b111e] border ${isOff ? 'border-rose-900/60' : 'border-slate-700'} rounded-xl p-4 shadow-lg">
+            <div class="flex items-start justify-between gap-2 mb-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <p class="text-sm font-black text-white truncate">${l.iface}</p>
+                        ${l.is_wan ? '<span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">WAN</span>' : ''}
+                        ${statusBadge(l.status)}
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1 truncate">${l.router_name}</p>
+                </div>
+                <button data-rid="${l.router_id}" data-iface="${l.iface}" data-dis="${l.disabled ? 1 : 0}"
+                        onclick="toggleLine(this)" class="${btnCls} text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition shrink-0">
+                    ${btnLabel}
+                </button>
+            </div>
+
+            <div class="flex items-end justify-between mb-1">
+                <span class="text-[10px] text-slate-400 font-bold">السرعة اللحظية</span>
+                <span class="text-lg font-black ${isOff ? 'text-slate-600' : 'text-white'}">${fmt(l.speed, 1)}<span class="text-[10px] text-slate-500"> Mbps</span></span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-3">
+                <div class="h-2 ${color} transition-all duration-500" style="width:${pct}%"></div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-[#151f32] rounded-lg py-2">
+                    <p class="text-[9px] text-slate-500">اليوم</p>
+                    <p class="text-xs font-black text-purple-300">${fmt(l.gb_today, 2)} GB</p>
+                </div>
+                <div class="bg-[#151f32] rounded-lg py-2">
+                    <p class="text-[9px] text-slate-500">الشهر</p>
+                    <p class="text-xs font-black text-fuchsia-300">${fmt(l.gb_month, 2)} GB</p>
+                </div>
+                <div class="bg-[#151f32] rounded-lg py-2">
+                    <p class="text-[9px] text-slate-500">الإجمالي</p>
+                    <p class="text-xs font-black text-slate-300">${fmt(l.total_gb, 2)} GB</p>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderNets(nets, routers) {
+    const box = document.getElementById('nets-grid');
+    if (!nets.length) {
+        box.innerHTML = '<p class="text-xs text-slate-500 col-span-full text-center py-6">لا توجد خطوط بعد.</p>';
+        return;
+    }
+    box.innerHTML = nets.map(n => `
+        <div class="bg-[#0b111e] border border-slate-700 rounded-xl p-4">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-9 h-9 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 font-black">#${n.network_id}</div>
+                <div class="min-w-0">
+                    <p class="text-xs font-black text-white truncate">${n.name || ('شبكة ' + n.network_id)}</p>
+                    <p class="text-[10px] text-slate-500">${n.up} / ${n.lines} خط شغّال</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-center">
+                <div class="bg-[#151f32] rounded-lg py-2">
+                    <p class="text-[9px] text-slate-500">الحمل</p>
+                    <p class="text-sm font-black text-amber-400">${fmt(n.load, 1)} <span class="text-[9px]">Mbps</span></p>
+                </div>
+                <div class="bg-[#151f32] rounded-lg py-2">
+                    <p class="text-[9px] text-slate-500">استهلاك اليوم</p>
+                    <p class="text-sm font-black text-purple-300">${fmt(n.gb_today, 2)} <span class="text-[9px]">GB</span></p>
+                </div>
+            </div>
+        </div>`).join('');
+}
+
+async function loadDashboard(manual) {
+    if (LB_BUSY) return;
+    LB_BUSY = true;
+    try {
+        const res = await fetch('/system/merge/api/dashboard', { headers: { 'X-Requested-With': 'fetch' } });
+        const data = await res.json();
+        if (!data.success) {
+            document.getElementById('lines-grid').innerHTML =
+                `<p class="text-xs text-rose-400 col-span-full text-center py-8">⚠️ ${data.message || 'تعذر التحميل'}</p>`;
+            return;
+        }
+        const g = data.globals;
+        window.__GLOBALS__ = g;
+
+        document.getElementById('k-lines').textContent = fmt(g.lines_total);
+        document.getElementById('k-lines-sub').textContent = `${fmt(g.wan_lines)} منها WAN | حد السحب ${g.poll_limit} سيرفر`;
+        document.getElementById('k-up').textContent = fmt(g.lines_up);
+        document.getElementById('k-up-sub').textContent = `${fmt(g.lines_down)} مقطوعة`;
+        document.getElementById('k-load').textContent = fmt(g.total_load, 1);
+        document.getElementById('k-load-sub').textContent = `سعة الخط ${g.line_capacity} Mbps`;
+        document.getElementById('k-gb-today').textContent = fmt(g.gb_today, 2);
+        document.getElementById('k-gb-month').textContent = fmt(g.gb_month, 2);
+        document.getElementById('k-gb-total').textContent = fmt(g.gb_total, 2);
+        document.getElementById('k-routers').textContent = `${g.routers_responding}/${g.routers_total}`;
+        document.getElementById('k-routers-ok').textContent = fmt(g.routers_responding);
+        document.getElementById('k-routers-fail').textContent = fmt(g.routers_failed);
+        document.getElementById('k-networks').textContent = fmt(g.networks_total);
+        document.getElementById('k-disabled').textContent = fmt(g.lines_disabled);
+
+        renderLines(data.lines || []);
+        renderNets(data.networks || []);
+
+        document.getElementById('last-update').textContent =
+            new Date().toLocaleTimeString('en-GB');
+    } catch (e) {
+        document.getElementById('last-update').textContent = 'ERROR';
+    } finally {
+        LB_BUSY = false;
+    }
+}
+
+/* --- تحكم: تعطيل / تفعيل خط --- */
+async function toggleLine(btn) {
+    const rid = btn.dataset.rid;
+    const iface = btn.dataset.iface;
+    const dis = btn.dataset.dis === '1';
+    if (!confirm(`${dis ? 'تفعيل' : 'تعطيل'} الخط «${iface}» على السيرفر؟`)) return;
+
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const res = await fetch('/system/merge/api/line/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ router_id: Number(rid), iface: iface, disabled: !dis })
+        });
+        const data = await res.json();
+        alert(data.message || (data.success ? 'تم بنجاح' : 'فشل'));
+    } catch (e) {
+        alert('تعذر الاتصال بالسيرفر');
+    } finally {
+        btn.disabled = false;
+        setTimeout(() => loadDashboard(true), 300);
+    }
+}
+
+/* --- الفلاتر --- */
+document.getElementById('line-filters').addEventListener('click', e => {
+    const b = e.target.closest('.filter-btn');
+    if (!b) return;
+    LB_FILTER = b.dataset.f;
+    document.querySelectorAll('.filter-btn').forEach(x => {
+        x.classList.remove('active', 'bg-slate-700');
+        x.classList.add('bg-slate-800');
+    });
+    b.classList.add('active', 'bg-slate-700');
+    b.classList.remove('bg-slate-800');
+    loadDashboard(true);
+});
+
+/* ==================================================================
+   مولّد سكربت الدمج (ECMP - يدعم لحد 64 خط)
+   ================================================================== */
+document.getElementById('lb-mode').addEventListener('change', function () {
+    document.getElementById('lb-static-box').classList.toggle('hidden', this.value !== 'static');
+});
+
+function generateLB() {
+    const MAX = 64;
+    const wanRaw = (document.getElementById('lb-wan').value || '').trim() || 'ether1_wan';
+    const lan = (document.getElementById('lb-lan').value || '').trim() || 'ether2_lan';
+    const dns = (document.getElementById('lb-dns').value || '').trim() || '8.8.8.8';
+    const mode = document.getElementById('lb-mode').value;
+    const gwPat = (document.getElementById('lb-gw').value || '').trim() || '192.168.{n}.1';
+    const ipPat = (document.getElementById('lb-ip').value || '').trim() || '192.168.{n}.2/24';
+
+    let count = parseInt(document.getElementById('lb-count').value, 10);
+    if (!Number.isFinite(count) || count < 1) count = 1;
+    if (count > MAX) count = MAX;
+
+    const m = wanRaw.match(/^(.*?)(\d+)(\D*)$/);
+    const pre = m ? m[1] : wanRaw;
+    const suf = m ? m[3] : '';
+    const iface = wanRaw.includes('{n}') ? n => wanRaw.replace(/\{n\}/g, n) : n => `${pre}${n}${suf}`;
+    const gw = n => gwPat.replace(/\{n\}/g, n);
+    const ip = n => ipPat.replace(/\{n\}/g, n);
+
+    const out = [];
+    const step = t => { out.push(''); out.push('# ===== ' + t + ' ====='); };
+
+    out.push('# ============================================================');
+    out.push(`#   دمج ${count} خط  |  Sakr Connect  |  ${mode === 'dhcp' ? 'DHCP' : 'Static'}`);
+    out.push(`#   كروت الـ WAN: ${iface(1)} ... ${iface(count)}   |   كرت الشبكة: ${lan}`);
+    out.push('#   الطريقة: ECMP = توزيع الاتصالات بالتساوي على كل الخطوط');
+    out.push('#   لو خط وقع بيتشال تلقائياً والباقي يكمّل');
+    out.push('# ============================================================');
+
+    if (count > 10) {
+        out.push(`# ⚠️ تنبيه: ${count} خط = كروت كتير. لو الجهاز مالوش`);
+        out.push('#    كروت فيزيوية كفاية، استخدم VLANs فوق كرت واحد.');
+    }
+
+    step('0) تنظيف القواعد القديمة (يعيد تشغيل السكربت بأمان)');
+    out.push('/ip firewall nat remove [find comment~"SC-WAN"]');
+    out.push('/ip route remove [find comment~"SC-WAN"]');
+    out.push('/ip address remove [find comment~"SC-WAN"]');
+
+    if (mode === 'static') {
+        step('1) عنوان IP ثابت لكل خط');
+        out.push('/ip address');
+        for (let n = 1; n <= count; n++) out.push(`add address=${ip(n)} interface=${iface(n)} comment="SC-WAN ${n}"`);
+    } else {
+        step('1) كل خط ياخد IP + بوابة تلقائياً من مودم ISP (DHCP)');
+        out.push('/ip dhcp-client');
+        out.push('remove [find comment~"SC-WAN"]');
+        for (let n = 1; n <= count; n++) out.push(`add interface=${iface(n)} add-default-route=yes comment="SC-WAN ${n}" disabled=no`);
+    }
+
+    step('2) NAT لكل خط (من غيره النت مش هيشتغل)');
+    out.push('/ip firewall nat');
+    for (let n = 1; n <= count; n++) out.push(`add chain=srcnat out-interface=${iface(n)} action=masquerade comment="SC-WAN ${n}"`);
+
+    if (mode === 'static') {
+        step('3) مسارات الدمج ECMP (نفس الـ distance = توزيع متساوي)');
+        out.push('/ip route');
+        for (let n = 1; n <= count; n++) out.push(`add dst-address=0.0.0.0/0 gateway=${gw(n)} distance=1 check-gateway=ping comment="SC-WAN ${n}"`);
+    } else {
+        step('3) مسارات الدمج');
+        out.push('# كل خط DHCP بيعمل مساره بنفسه بـ distance=1');
+        out.push('# يعني الدمج شغال تلقائياً من غير أي أمر route.');
+    }
+
+    step('4) الـ DNS');
+    out.push(`/ip dns set allow-remote-requests=yes servers=${dns}`);
+
+    step('5) تحقق إن المسارات كترت فعلاً');
+    out.push('/ip route print where dst-address=0.0.0.0/0');
+    out.push('/ip firewall nat print where comment~"SC-WAN"');
+
+    out.push('');
+    out.push('# لو الخط وقع: /ip route disable [find comment="SC-WAN 3"]');
+    out.push('# وشغّله تاني:  /ip route enable  [find comment="SC-WAN 3"]');
+
+    document.getElementById('lb-out').value = out.join('\n');
+}
+
+function copyLB() {
+    const ta = document.getElementById('lb-out');
+    if (!ta.value) { generateLB(); }
+    ta.select();
+    document.execCommand('copy');
+    alert('تم نسخ السكربت! الصقه في تيرمنال المايكروتيك.');
+}
+
+/* ==================================================================
+   الإقلاع: تحديث فوري + مؤقت كل 5 ثواني
+   ================================================================== */
+loadDashboard(true);
+setInterval(() => loadDashboard(false), 5000);
+</script>
+{% endblock %}

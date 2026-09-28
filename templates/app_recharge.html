@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>صقر كونكت باي - تجديد الباقة</title>
+    <link rel="stylesheet" href="/public/css/app_recharge.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h2>صقر كونكت باي</h2>
+            <p>تجديد الاشتراك السريع</p>
+        </div>
+
+        <div class="status-card">
+            <h3>حالة الإنترنت: <span class="disconnected">مفصول</span></h3>
+            <p>عفواً، لقد انتهت باقتك أو رصيدك.</p>
+        </div>
+
+        <div class="payment-section">
+            <label>رقم هاتف المشترك:</label>
+            <input type="tel" id="userPhone" placeholder="أدخل رقمك هنا..." required>
+
+            <button class="pay-btn" onclick="processPayment()">ادفع وجدد باقتك الآن</button>
+        </div>
+
+        <div class="footer">
+            <p>تطوير: م/ أحمد سالم الملواني | صقر ميديا</p>
+        </div>
+    </div>
+
+    <script>
+        function processPayment() {
+            var phone = document.getElementById('userPhone').value;
+            if(!phone) {
+                alert("برجاء إدخال رقم الهاتف أولاً");
+                return;
+            }
+            // زرار الدفع اللي هيربط مع الباك إند اللي عملناه
+            alert("جاري تحويلك لبوابة الدفع لتجديد اشتراكك فوراً...");
+        }
+    </script>
+</body>
+</html>

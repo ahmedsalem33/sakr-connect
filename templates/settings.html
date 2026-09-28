@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto p-4 md:p-6 text-right" dir="rtl">
+    
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-800 pb-5 gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-white flex items-center gap-3">
+                <span class="text-blue-500 bg-blue-500/10 p-2 rounded-xl">🌐</span> 
+                إعدادات المنظومة والشبكات
+            </h1>
+            <p class="text-slate-400 text-sm mt-2 font-medium">تخصيص الهوية البصرية لصفحة الهوتسبوت، منيو الكافيه، وإعدادات الموزع المحلية.</p>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            <span class="bg-blue-500/10 text-blue-400 px-4 py-1.5 rounded-xl text-xs font-bold border border-blue-500/20 shadow-lg">لوحة تحكم الموزع</span>
+        </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        
+        <div class="w-full lg:w-72 bg-[#0f172a] border border-slate-800 rounded-2xl p-4 h-fit shrink-0 shadow-2xl">
+            <h2 class="text-xs font-black text-slate-500 mb-4 pr-2 uppercase tracking-wider">الأقسام المتاحة</h2>
+            <ul class="space-y-1.5 text-sm font-bold" id="settings-tabs">
+                <li><button onclick="switchTab('hotspot')" id="btn-hotspot" class="tab-btn active-tab w-full text-right p-3.5 rounded-xl text-blue-400 bg-blue-500/10 border border-blue-500/20 transition-all">🎨 هوية صفحة اللوجن</button></li>
+                <li><button onclick="switchTab('cafe')" id="btn-cafe" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all">☕ منيو الكافيه</button></li>
+                <li><button onclick="switchTab('profile')" id="btn-profile" class="tab-btn w-full text-right p-3.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all">👤 الحساب الشخصي</button></li>
+            </ul>
+        </div>
+
+        <div class="flex-1 bg-[#0f172a] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl relative min-h-[500px]">
+            
+            <div id="tab-hotspot" class="tab-content block space-y-6 animate-fade-in">
+                <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">🎨 تخصيص قالب صفحة تسجيل الدخول للمشتركين</h3>
+                <form action="{{ url_for('settings.update_template_settings') if 'update_template_settings' in request.endpoint else '#' }}" method="POST" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">اسم الشبكة (Brand Name)</label>
+                            <input type="text" name="brand_name" value="{{ template_settings.brand_name if template_settings else 'Sakr Connect' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-bold outline-none focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">اللون الأساسي للقالب</label>
+                            <input type="color" name="primary_color" value="{{ template_settings.primary_color if template_settings else '#2563eb' }}" class="w-full h-12 bg-[#0b111e] border border-slate-700 rounded-xl p-1 cursor-pointer outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">رابط بورتال الميكروتك (Portal URL)</label>
+                            <input type="text" name="portal_url" value="{{ template_settings.portal_url if template_settings else '10.0.0.3' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-mono outline-none focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">شكل وتصميم القالب المختار</label>
+                            <select name="template_name" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-bold outline-none focus:border-blue-500">
+                                <option value="default" {% if template_settings and template_settings.template_name == 'default' %}selected{% endif %}>التصميم الافتراضي المتجاوب</option>
+                                <option value="modern" {% if template_settings and template_settings.template_name == 'modern' %}selected{% endif %}>التصميم المودرن السريع</option>
+                                <option value="cafe" {% if template_settings and template_settings.template_name == 'cafe' %}selected{% endif %}>تصميم مخصص للكافيهات والمطاعم</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-5 border-t border-slate-800 flex justify-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-3 rounded-xl font-black shadow-lg transition-all">
+                            💾 حفظ إعدادات الهوية
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="tab-cafe" class="tab-content hidden space-y-6 animate-fade-in">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <h3 class="text-xl font-black text-white">☕ إدارة قائمة مشروبات ومأكولات الكافيه</h3>
+                    <button type="button" onclick="openModal('add-item-modal')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-black text-xs transition-all">
+                        + إضافة صنف جديد للمنيو
+                    </button>
+                </div>
+
+                <div class="bg-[#0b111e] rounded-xl border border-slate-800 overflow-hidden">
+                    <table class="w-full text-sm text-right text-slate-400">
+                        <thead class="bg-[#151f32] text-slate-300 font-bold">
+                            <tr>
+                                <th class="p-3">اسم الصنف</th>
+                                <th class="p-3">السعر الحالي</th>
+                                <th class="p-3 text-left">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            {% for item in cafe_items %}
+                            <tr class="hover:bg-slate-900/50">
+                                <td class="p-3 text-white font-bold">{{ item.item_name }}</td>
+                                <td class="p-3 text-emerald-400 font-mono font-bold">{{ item.price }} EGP</td>
+                                <td class="p-3 text-left">
+                                    <form action="{{ url_for('settings.delete_cafe_item', item_id=item.id) if 'delete_cafe_item' in request.endpoint else '#' }}" method="POST" class="inline">
+                                        <button type="submit" class="text-rose-500 hover:text-rose-400 font-bold text-xs">حذف من القائمة 🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="p-8 text-center text-slate-600 font-medium">لم تقم بإضافة أي أصناف لمنيو الكافيه بعد.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-profile" class="tab-content hidden space-y-6 animate-fade-in">
+                <h3 class="text-xl font-black text-white border-b border-slate-800 pb-4">👤 بيانات الحساب الشخصي للموزع</h3>
+                <form action="{{ url_for('settings.update_profile_settings') if 'update_profile_settings' in request.endpoint else '#' }}" method="POST" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">الاسم الكامل للموزع</label>
+                            <input type="text" name="fullname" value="{{ current_user.fullname if current_user else '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">اسم المستخدم الحساب</label>
+                            <input type="text" name="username" value="{{ current_user.username if current_user else '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-mono outline-none" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">رقم الهاتف الأساسي</label>
+                            <input type="text" name="phone1" value="{{ current_user.phone1 if current_user else '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-2">البريد الإلكتروني المربوط</label>
+                            <input type="email" name="email" value="{{ current_user.email if current_user else '' }}" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-5 border-t border-slate-800 flex justify-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-3 rounded-xl font-black shadow-lg transition-all">
+                            💾 تحديث البيانات الشخصية
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="add-item-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-[#0f172a] border border-slate-700 w-full max-w-md p-6 rounded-2xl text-right shadow-2xl m-4" dir="rtl">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+            <h3 class="text-white font-black text-lg">➕ إضافة صنف جديد للمنيو</h3>
+            <button type="button" onclick="closeModal('add-item-modal')" class="text-slate-500 hover:text-white text-xl font-bold">✕</button>
+        </div>
+        <form action="{{ url_for('settings.add_cafe_item') if 'add_cafe_item' in request.endpoint else '#' }}" method="POST">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-2">اسم المشروب / المأكول</label>
+                    <input type="text" name="item_name" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-2">السعر (بالجنيه المصري)</label>
+                    <input type="number" name="price" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-emerald-500">
+                </div>
+            </div>
+            <div class="mt-6 pt-3 border-t border-slate-800 flex justify-end gap-2">
+                <button type="button" onclick="closeModal('add-item-modal')" class="bg-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold">إلغاء</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl text-xs font-black shadow-md">إضافة صنف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); el.classList.remove('block'); });
+        document.querySelectorAll('.tab-btn').forEach(function(el) {
+            el.classList.remove('text-blue-400', 'bg-blue-500/10', 'border-blue-500/20', 'active-tab');
+            el.classList.add('text-slate-400');
+        });
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        document.getElementById('tab-' + tabId).classList.add('block');
+        let targetBtn = document.getElementById('btn-' + tabId);
+        if (targetBtn) {
+            targetBtn.classList.remove('text-slate-400');
+            targetBtn.classList.add('text-blue-400', 'bg-blue-500/10', 'border-blue-500/20', 'active-tab');
+        }
+    }
+    function openModal(modalId) {
+        let modal = document.getElementById(modalId);
+        modal.classList.remove('hidden');
+        setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
+    }
+    function closeModal(modalId) {
+        let modal = document.getElementById(modalId);
+        modal.classList.add('opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+</script>
+{% endblock %}

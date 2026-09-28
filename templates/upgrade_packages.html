@@ -1,0 +1,183 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{# السماح للأنظمة الثلاثة الأساسية فقط بدخول صفحة الباقات #}
+{% if session.get('role') in ['network', 'cafe', 'home'] %}
+
+<div class="space-y-8 w-full max-w-7xl mx-auto" dir="rtl">
+
+    {# --- ترويسة الصفحة الديناميكية --- #}
+    <div class="bg-gradient-to-r from-slate-900 via-[#131c31] to-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl"></div>
+        
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 relative z-10">
+            {% if session.get('role') == 'network' %}
+                🚀 باقات إدارة الشبكات المركزية
+            {% elif session.get('role') == 'cafe' %}
+                ☕ باقات أنظمة الكافيهات والهوت سبوت
+            {% else %}
+                🏠 باقات التحكم المنزلي المتقدم
+            {% endif %}
+        </h2>
+        
+        <p class="text-sm text-slate-400 relative z-10 max-w-2xl mx-auto leading-relaxed">
+            استعرض الباقات المتاحة لنظامك واختر الخطة الأنسب لحجم عملك. 
+            <br>
+            <span class="text-rose-400 font-bold">⚠️ تنبيه:</span> جميع خطط صقر كونكت مسبقة الدفع. سيتم إصدار طلب دفع فوري لتفعيل باقتك آلياً بمجرد سداد الفاتورة.
+        </p>
+
+        <div class="mt-6 relative z-10">
+            <a href="/client/account" class="inline-block bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2 px-6 rounded-lg border border-slate-700 transition-all shadow-lg">
+                🔙 العودة إلى الفواتير والحساب
+            </a>
+        </div>
+    </div>
+
+    {# --- شبكة كروت الباقات (Cards Grid) --- #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if packages %}
+            {% for pkg in packages %}
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-xl hover:border-blue-500 hover:shadow-blue-900/20 transition-all flex flex-col justify-between group transform hover:-translate-y-1">
+                
+                {# رأس الكارت (اسم الباقة والسعر) #}
+                <div class="text-center border-b border-slate-800/50 pb-5 mb-5">
+                    <h3 class="text-lg font-black text-blue-400 mb-2">{{ pkg.name }}</h3>
+                    <div class="flex items-center justify-center gap-1">
+                        <span class="text-3xl font-black text-white font-mono">{{ pkg.price }}</span>
+                        <span class="text-xs font-bold text-slate-500">ج.م / شهرياً</span>
+                    </div>
+                </div>
+
+                {# مواصفات الباقة #}
+                <div class="space-y-3 mb-8 flex-grow">
+                    <ul class="text-right text-xs text-slate-300 space-y-3">
+                        <li class="flex items-center gap-2">
+                            <span class="text-emerald-400">✔️</span>
+                            <span>أقصى عدد سيرفرات مسموح: <strong class="text-white font-mono">{{ pkg.max_servers or pkg.max_routers or 'غير محدود' }}</strong></span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="text-emerald-400">✔️</span>
+                            <span>الحد الأقصى للعملاء/الكروت: <strong class="text-white font-mono">{{ pkg.max_clients or pkg.max_subscribers or 'غير محدود' }}</strong></span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="text-emerald-400">✔️</span>
+                            <span>مدة التفعيل والصلاحية: <strong class="text-white font-mono">30 يوم</strong></span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="text-emerald-400">✔️</span>
+                            <span>تفعيل آلي فوري عبر الـ Webhook</span>
+                        </li>
+                    </ul>
+                </div>
+
+                {# زرار الاختيار والدفع #}
+                <button 
+                    type="button" 
+                    onclick="openPackageModal('{{ pkg.id }}', '{{ pkg.name }}', '{{ pkg.price }}')" 
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all group-hover:scale-[1.02]">
+                    اختيار الباقة والدفع
+                </button>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+                <span class="text-4xl block mb-3">📭</span>
+                <h3 class="text-white font-bold text-lg mb-2">لا توجد باقات متاحة حالياً</h3>
+                <p class="text-slate-400 text-xs">يرجى التواصل مع الإدارة الفنية المركزية لإضافة وتكوين خطط الأسعار الخاصة بنظامك.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{# ========================================================== #}
+{# نَافِذَةُ الدَّفْعِ الْمُقَدَّمِ الْمُبَاشِرِ لِلْبَاقَةِ (MODAL) #}
+{# ========================================================== #}
+<div id="packagePaymentModal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity" dir="rtl">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative overflow-hidden transform scale-100 transition-transform">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-xs font-black text-white flex items-center gap-2">💳 طلب تفعيل وتجديد اشتراك (دفع مقدم)</h3>
+            <button onclick="closePackageModal()" class="text-slate-500 hover:text-white text-md font-bold transition-colors">&times;</button>
+        </div>
+
+        <form action="/finance/checkout" method="POST" class="space-y-4">
+            {# حقول مخفية تحمل بيانات الباقة التي تم اختيارها #}
+            <input type="hidden" id="modal_package_id" name="package_id" value="">
+            <input type="hidden" id="modal_amount" name="amount" value="">
+            
+            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-xs text-right space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">الباقة المطلوبة:</span> 
+                    <span id="display_pkg_name" class="text-white font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded">--</span>
+                </div>
+                <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-800">
+                    <span class="text-slate-300 font-bold">المبلغ الإجمالي المطلوب سداده:</span> 
+                    <span class="text-rose-400 font-black text-xl font-mono"><span id="display_pkg_price">0</span> ج.م</span>
+                </div>
+            </div>
+
+            <div class="bg-amber-950/20 border border-amber-900/50 text-amber-400 p-3 rounded-lg text-[11px] font-bold text-center leading-relaxed">
+                ⚠️ لضمان التفعيل الفوري والآلي، يرجى إدخال رقم الهاتف الذي ستقوم بالتحويل منه بدقة ليقوم النظام بمطابقة الحوالة.
+            </div>
+            
+            <div class="space-y-1.5 text-right">
+                <label class="block text-[11px] font-bold text-slate-300">رقم الهاتف (محفظة الكاش) المحول منه:</label>
+                <input type="text" name="sender_phone" required placeholder="مثال: 01011199486" pattern="^01[0125][0-9]{8}$" title="يرجى إدخال رقم هاتف مصري صحيح" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all">
+            </div>
+
+            <div class="space-y-1.5 text-right">
+                <label class="block text-[11px] font-bold text-slate-300">بوابة الدفع الإلكترونية المستخدمة:</label>
+                <select name="payment_method" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all">
+                    <option value="Vodafone Cash">فودافون كاش (Vodafone Cash)</option>
+                    <option value="InstaPay">إنستا باي الإلكتروني (InstaPay)</option>
+                    <option value="Etisalat Cash">اتصالات كاش (Etisalat Cash)</option>
+                    <option value="Orange Cash">أورنج كاش (Orange Cash)</option>
+                    <option value="We Pay">وي باي (We Pay)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all mt-4 transform active:scale-95 flex items-center justify-center gap-2">
+                <span>تأكيد الطلب وإنشاء فاتورة التفعيل</span>
+                <span>✅</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% else %}
+{# شاشة حظر إذا حاول الموزع الدخول للرابط مباشرة #}
+<div class="flex items-center justify-center min-h-[50vh]">
+    <div class="text-center space-y-4 max-w-md mx-auto p-6 bg-rose-950/20 border border-rose-900 rounded-2xl">
+        <span class="text-4xl block">⛔</span>
+        <h2 class="text-rose-500 text-lg font-black">عفواً، الدخول مرفوض.</h2>
+        <p class="text-slate-400 text-xs leading-relaxed">
+            الحسابات الفرعية والموزعون ليس لديهم صلاحية للوصول إلى لوحة ترقية الباقات المركزية. يرجى الرجوع لمالك الشبكة.
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // دالة فتح النافذة وحقن بيانات الباقة المختارة ديناميكياً
+    function openPackageModal(pkgId, pkgName, pkgPrice) {
+        // تعبئة الحقول المخفية للباك إند
+        document.getElementById('modal_package_id').value = pkgId;
+        document.getElementById('modal_amount').value = pkgPrice;
+        
+        // تعبئة واجهة العرض للمستخدم
+        document.getElementById('display_pkg_name').innerText = pkgName;
+        document.getElementById('display_pkg_price').innerText = pkgPrice;
+        
+        // إظهار النافذة
+        document.getElementById('packagePaymentModal').classList.remove('hidden');
+    }
+
+    // دالة إغلاق النافذة
+    function closePackageModal() {
+        document.getElementById('packagePaymentModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

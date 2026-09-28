@@ -1,0 +1,357 @@
+<!-- 
+==============================================================================
+SAKR CONNECT - CENTRAL BILLING & ACCOUNT DASHBOARD
+حقوق المطور: Sakr Media Agency | صقر ميديا
+حقوق النشر: مسجلة باسم مشروع صقر كونكت (Sakr Connect)
+أرقام الدعم الفني للمطور: 01033379719 - 01033379719
+العنوان: 
+صفحة المطور الشخصية: https://www.facebook.com/ahmedsalemJournalist
+صفحة الوكالة: https://www.facebook.com/sakrmediaagency
+==============================================================================
+-->
+
+{% extends "layout.html" %}
+
+{% block content %}
+{# السماح فقط للأنظمة الأساسية الثلاثة (صاحب شبكة، كافيه، منازل) والإدارة العليا بدخول الخزنة والماليات #}
+{% if session.get('role', 'admin') in ['admin', 'super_admin', 'network', 'cafe', 'home'] %}
+
+{# نظام الحظر الذكي: إخفاء القائمة الجانبية وشل حركة الزراير عند الحظر #}
+{% if is_locked %}
+<style>
+    /* إخفاء القائمة الجانبية تماماً عند انتهاء المهلة */
+    aside, .sidebar, #sidebar, [class*="sidebar"], [class*="side-bar"] { 
+        display: none !important; 
+    }
+    /* تمديد مساحة المحتوى الرئيسية لتغطية الشاشة */
+    main, .main-content, #main-content, [class*="main-content"] { 
+        width: 100% !important; 
+        margin-right: 0 !important; 
+        margin-left: 0 !important; 
+        padding: 24px !important; 
+    }
+    /* تعطيل أزرار التبديل العلوية بالـ CSS لمنع الانتقال */
+    .tab-btn-lock {
+        pointer-events: none !important;
+        opacity: 0.4 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+{% endif %}
+
+<div class="space-y-6 w-full max-w-7xl mx-auto" dir="rtl">
+
+    {# حالة أ: الحساب في مهلة الـ 48 ساعة التجريبية #}
+    {% if is_readonly and show_welcome_modal %}
+    <div class="bg-gradient-to-r from-blue-950 via-cyan-900 to-blue-950 border-2 border-cyan-500 text-white rounded-xl p-4 text-xs font-bold text-center shadow-2xl flex items-center justify-center gap-3">
+        <span>👋 أهلاً بك في نظام صقر كونكت! حسابك الآن في الفترة التجريبية (48 ساعة). جميع مميزات اللوحة مفتوحة للمعاينة والتصفح، يرجى الترقية واختيار باقة لتفعيل الربط الفني واستخدام السيرفرات.</span>
+    </div>
+    {% endif %}
+
+    {# حالة ب: الحساب مقفل لتجاوز المهلة أو انتهاء الـ 30 يوم #}
+    {% if is_locked %}
+    <div class="bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-600 text-white rounded-xl p-4 text-xs font-black text-center shadow-2xl animate-pulse flex items-center justify-center gap-3">
+        <span>🚨 تنبيه نظام صقر كونكت: تم تقييد صلاحيات لوحة التحكم لعدم وجود اشتراك مفعل. يرجى سداد الفاتورة أو تجديد الاشتراك الآن لإعادة التفعيل الآلي الفوري.</span>
+    </div>
+    {% endif %}
+
+    {# عرض رسائل السيستم الـ Flash Messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="p-4 rounded-xl text-xs font-bold text-center border {% if category == 'success' %} bg-emerald-950/80 border-emerald-500 text-emerald-400 {% elif category == 'warning' %} bg-amber-950/80 border-amber-500 text-amber-400 {% else %} bg-rose-950/80 border-rose-500 text-rose-400 {% endif %} shadow-lg">
+              {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="flex border-b border-slate-800 bg-[#0f172a] rounded-t-xl overflow-hidden shrink-0">
+        <button onclick="switchTab('account-info')" id="btn-account-info" class="tab-btn flex-1 py-3 text-xs font-bold transition-all bg-slate-800 text-blue-400 border-b-2 border-blue-500">
+            ℹ️ معلومات الحساب والفواتير
+        </button>
+        <button onclick="switchTab('transfers-log')" id="btn-transfers-log" class="tab-btn {% if is_locked %}tab-btn-lock{% endif %} flex-1 py-3 text-xs font-bold text-slate-400 hover:text-white transition-all">
+            💵 سجل المدفوعات والتحويلات
+        </button>
+        <button onclick="switchTab('change-plan')" id="btn-change-plan" class="tab-btn {% if is_locked %}tab-btn-lock{% endif %} flex-1 py-3 text-xs font-bold text-slate-400 hover:text-white transition-all">
+            ⚡ ترقية / تعديل الخطة
+        </button>
+    </div>
+
+    <div id="tab-account-info" class="tab-content space-y-6">
+        
+        <div class="bg-gradient-to-r from-slate-900 via-[#131c31] to-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl text-center relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
+            <h3 class="text-md font-black text-white mb-2">
+                {% if is_locked %}
+                    🔒 تم تقييد المنظومة لعدم وجود اشتراك نشط
+                {% else %}
+                    💳 نظام الدفع والتحصيل الإلكتروني المركزي
+                {% endif %}
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">
+                {% if is_locked %}
+                    يرجى تسوية إجمالي الفاتورة المطلوبة بالأسفل ليقوم محرك الـ Webhook برفع الحظر تلقائياً وتفعيل الخدمة فوراً.
+                {% else %}
+                    يمكنك ترقية نظامك وتجديد فواتيرك مسبقة الدفع عبر بوابات الدفع الذكية المتوفرة.
+                {% endif %}
+            </p>
+            
+            <button type="button" onclick="openPaymentModal()" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs px-8 py-2.5 rounded-lg shadow-lg shadow-blue-500/20 transition-all transform active:scale-95">
+                تجديد الفاتورة والدفع الآن
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-[#059669] rounded-xl p-5 flex justify-between items-center shadow-lg transform hover:scale-[1.01] transition-all">
+                <div class="text-right text-white">
+                    <span class="block text-white/80 text-[11px] font-bold mb-1">كود التحصيل الرقمي المركزي</span>
+                    <span class="block text-2xl font-black font-mono tracking-wider">{{ billing.collect_code }}</span>
+                </div>
+                <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-xl">📱</div>
+            </div>
+
+            <div class="bg-[#7c3aed] rounded-xl p-5 flex justify-between items-center shadow-lg transform hover:scale-[1.01] transition-all">
+                <div class="text-right text-white">
+                    <span class="block text-white/80 text-[11px] font-bold mb-1">تاريخ انتهاء الباقة</span>
+                    <span class="block text-xl font-black font-mono">{{ billing.expiry_date }}</span>
+                </div>
+                <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-xl">⏳</div>
+            </div>
+
+            <div class="bg-[#e11d48] rounded-xl p-5 flex justify-between items-center shadow-lg transform hover:scale-[1.01] transition-all">
+                <div class="text-right text-white">
+                    <span class="block text-white/80 text-[11px] font-bold mb-1">المديونية / الفاتورة المستحقة</span>
+                    <span class="block text-2xl font-black font-mono">
+                        {{ billing.total_invoice }} <span class="text-xs font-bold">جنيه</span>
+                        {% if is_locked %}
+                        <span class="block text-[10px] bg-black/40 text-rose-300 font-bold px-2 py-0.5 rounded mt-1 text-center border border-rose-500/30">مستحق السداد فوراً</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-xl">⚠️</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg overflow-hidden">
+                <h4 class="text-xs font-bold text-blue-400 mb-3 flex items-center gap-2">📋 حدود ومعطيات خطة النظام الحالية</h4>
+                <table class="w-full text-right text-xs divide-y divide-slate-800">
+                    <tr class="hover:bg-slate-800/10">
+                        <td class="py-2.5 text-slate-400">باقة الاشتراك الأساسية:</td>
+                        <td class="py-2.5 text-emerald-400 font-bold">{{ saas_package.name if saas_package else 'فترة تجريبية (لم يتم تحديد باقة مسبقة الدفع)' }}</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/10">
+                        <td class="py-2.5 text-slate-400">تكلفة الاشتراك الشهري:</td>
+                        <td class="py-2.5 text-white font-bold font-mono">{{ saas_package.price if saas_package else '0' }} جنيه</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/10">
+                        <td class="py-2.5 text-slate-400">أقصى عدد سيرفرات متاح ربطها:</td>
+                        <td class="py-2.5 text-white font-bold font-mono">{{ saas_package.max_routers if saas_package else '0 (مغلق برمجياً لحين الاشتراك)' }} سيرفر</td>
+                    </tr>
+                    <tr class="hover:bg-slate-800/10">
+                        <td class="py-2.5 text-slate-400">الحد الأقصى للمشتركين والكروت المسموحة:</td>
+                        <td class="py-2.5 text-white font-bold font-mono">{{ saas_package.max_clients if saas_package else '0' }} عميل/كارت</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg overflow-hidden flex flex-col justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-blue-400 mb-3 flex items-center gap-2">🧾 تفاصيل الفاتورة الإلكترونية الصادرة</h4>
+                    <table class="w-full text-right text-xs divide-y divide-slate-800">
+                        <tr class="hover:bg-slate-800/10"><td class="py-2.5 text-slate-400">تاريخ إصدار طلب الخدمة:</td><td class="py-2.5 text-white font-mono">{{ billing.invoice_start }}</td></tr>
+                        <tr class="hover:bg-slate-800/10"><td class="py-2.5 text-slate-400">تاريخ استحقاق التجديد القادم:</td><td class="py-2.5 text-white font-mono">{{ billing.invoice_end }}</td></tr>
+                        <tr class="hover:bg-slate-800/10"><td class="py-2.5 text-slate-400">دورة الاشتراك المحسوبة:</td><td class="py-2.5 text-blue-400 font-bold">{{ billing.duration_days }} يوم (شهري مسبق الدفع)</td></tr>
+                        <tr class="hover:bg-slate-800/10"><td class="py-2.5 text-slate-400">قيمة باقة النظام الأساسية:</td><td class="py-2.5 text-white font-mono">{{ saas_package.price if saas_package else '0' }} جنيه</td></tr>
+                    </table>
+                </div>
+                <div class="mt-4 bg-rose-950/40 border border-rose-900/50 rounded-lg p-3 flex justify-between items-center">
+                    <span class="text-xs font-black text-rose-400">المبلغ الإجمالي المطلوب سداده مقدمًا:</span>
+                    <span class="text-lg font-black text-rose-400 font-mono">{{ billing.total_invoice }} جنيه مصري</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-transfers-log" class="tab-content hidden space-y-4">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex justify-between items-center">
+            <h3 class="text-xs font-bold text-white">📑 أرشيف مدفوعات تجديد وتفعيل الساس المركزي</h3>
+            <a href="/finance/add-transaction" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-all decoration-none">
+                + تسجيل إشعار تحويل يدوي للمراجعة
+            </a>
+        </div>
+
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+            <table class="w-full text-right text-xs whitespace-nowrap">
+                <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4 font-bold">رقم مرجع العملية (TX-REF)</th>
+                        <th class="py-3 px-4 font-bold">رقم محفظة المرسل</th>
+                        <th class="py-3 px-4 font-bold text-center">المبلغ المدفوع</th>
+                        <th class="py-3 px-4 font-bold text-center">التاريخ والتوقيت</th>
+                        <th class="py-3 px-4 font-bold text-center">حالة المطابقة الآلية</th>
+                        <th class="py-3 px-4 font-bold">نوع الباقة</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/50 text-slate-300">
+                    {% if transfers %}
+                        {% for tx in transfers %}
+                        <tr class="hover:bg-slate-800/20 transition">
+                            <td class="py-3 px-4 font-mono text-cyan-400">{{ tx.transaction_ref }}</td>
+                            <td class="py-3 px-4 font-mono">{{ tx.sender_phone or '--' }}</td>
+                            <td class="py-3 px-4 text-center font-bold text-emerald-400 font-mono">{{ tx.amount }} جنيه</td>
+                            <td class="py-3 px-4 text-center font-mono">{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td class="py-3 px-4 text-center">
+                                {% if tx.payment_status == 'paid' %}
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ناجحة وتم التفعيل</span>
+                                {% elif tx.payment_status == 'pending' %}
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">قيد الانتظار بالـ Webhook</span>
+                                {% else %}
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">مرفوضة / ملغاة</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 text-slate-400">{{ tx.package_name or '--' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-500 font-bold">👀 السجل المالي نظيف تماماً ولا توجد فواتير معلقة حالياً.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-change-plan" class="tab-content hidden space-y-6">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 text-center">
+            <h3 class="text-md font-black text-white mb-2">⚡ ترقية أو تغيير الباقة مسبقة الدفع</h3>
+            <p class="text-xs text-slate-400">يمكنك تعديل باقتك لزيادة كوتا السيرفرات المتصلة، وتوسيع حدود طباعة الكروت وعملاء البرودباند الفعّالين لديك.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 text-center space-y-4 hover:border-blue-500 transition-all flex flex-col justify-between">
+                <div class="space-y-2">
+                    <span class="text-3xl block">🚀</span>
+                    <h4 class="text-lg font-black text-white">الترقية إلى خطة أعلى</h4>
+                    <p class="text-xs text-slate-400">الانتقال الفوري إلى باقات أعلى لاختيار الخطة الأنسب لحجم شبكتك.</p>
+                </div>
+                <form action="/packages/upgrade" method="GET" class="w-full">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2.5 rounded-lg transition-all mt-4">استعراض الباقات المتاحة</button>
+                </form>
+            </div>
+
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 text-center space-y-4 hover:border-rose-900 transition-all flex flex-col justify-between">
+                <div class="space-y-2">
+                    <span class="text-3xl block">📉</span>
+                    <h4 class="text-lg font-black text-white">تغيير الباقة الحالية</h4>
+                    <p class="text-xs text-slate-400">العودة إلى حزم تحكم أصغر حجماً وسعة تتماشى مع المتطلبات الحالية لروترك.</p>
+                </div>
+                <form action="/packages/downgrade" method="GET" class="w-full">
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2.5 rounded-lg transition-all mt-4">تقليص باقة الاشتراك</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ========================================================== #}
+{# نَافِذَةُ الدَّفْعِ الْمُقَدَّمِ الْمُبَاشِرِ (TAILWIND LIVE MODAL) #}
+{# ========================================================== #}
+{% set user_country = session.get('country', 'EG') %}
+{% set currency = 'ج.م' if user_country == 'EG' else '$' %}
+{% set currency_symbol = 'ج.م' if user_country == 'EG' else 'USD' %}
+<div id="paymentModal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden" dir="rtl">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative overflow-hidden">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-xs font-black text-white flex items-center gap-2">💳 سداد فاتورة صقر كونكت (دفع مقدم)</h3>
+            <button onclick="closePaymentModal()" class="text-slate-500 hover:text-white text-md font-bold">&times;</button>
+        </div>
+
+        <form action="/finance/checkout" method="POST" class="space-y-4">
+            <input type="hidden" name="amount" value="{{ billing.total_invoice }}">
+            <input type="hidden" name="package_id" value="{{ saas_package.id if saas_package else '' }}">
+            
+            <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800 text-xs text-right space-y-1.5">
+                <div class="flex justify-between"><span class="text-slate-400">نوع الخدمة المطلوب تفعيلها:</span> <span class="text-white font-bold">{{ saas_package.name if saas_package else 'تفعيل فوري للمنظومة المركزية' }}</span></div>
+                <div class="flex justify-between mt-2 pt-2 border-t border-slate-800"><span class="text-slate-300 font-bold">المبلغ المطلوب سداده بالفاتورة:</span> <span class="text-rose-400 font-black text-lg">{{ billing.total_invoice }} {{ currency }}</span></div>
+            </div>
+
+            <div class="bg-blue-950/40 border border-blue-900 text-blue-400 p-3 rounded-lg text-[11px] font-bold text-center leading-relaxed">
+                ℹ️ سيتم توليد طلب دفع مرتبط بالـ Webhook الخاص بنا. يرجى إدخال رقم الهاتف/البريد الذي ستقوم بالتحويل منه لضمان المطابقة والتفعيل الآلي فور وصول الحوالة.
+            </div>
+            
+            <div class="space-y-1.5 text-right">
+                <label class="block text-[11px] font-bold text-slate-300">
+                    {% if user_country == 'EG' %}رقم المحفظة/الهاتف (الكاش) الذي ستحول منه المبلغ:{% else %}بريد PayPal أو مرجع التحويل:{% endif %}
+                </label>
+                <input type="text" name="sender_phone" required 
+                       placeholder="{% if user_country == 'EG' %}مثال: 01011199486{% else %}مثال: user@example.com أو TXN123456{% endif %}" 
+                       class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-blue-500 outline-none">
+            </div>
+
+            <div class="space-y-1.5 text-right">
+                <label class="block text-[11px] font-bold text-slate-300">بوابة الدفع الإلكترونية المستخدمة للتحويل:</label>
+                <select name="payment_method" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:border-blue-500 outline-none">
+                    {% if user_country == 'EG' %}
+                        <option value="Vodafone Cash">فودافون كاش (Vodafone Cash)</option>
+                        <option value="InstaPay">إنستا باي الإلكتروني (InstaPay)</option>
+                        <option value="Etisalat Cash">اتصالات كاش (Etisalat Cash)</option>
+                        <option value="Orange Cash">أورنج كاش (Orange Cash)</option>
+                        <option value="We Pay">وي باي (We Pay)</option>
+                        <option value="Bank Transfer">تحويل بنكي (CIB / QNB / NBE / بنك مصر)</option>
+                    {% else %}
+                        <option value="PayPal">PayPal (الدفع بالدولار)</option>
+                        <option value="Stripe">Stripe (بطاقة ائتمان/خصم)</option>
+                        <option value="Wise">Wise (تحويل بنكي دولي)</option>
+                        <option value="Crypto">عملات رقمية (USDT/USDC)</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-3 rounded-lg shadow-lg shadow-blue-600/20 transition-all mt-2">
+                إصدار طلب الفاتورة وتأكيد التحويل الإلكتروني
+            </button>
+        </form>
+    </div>
+</div>
+
+{# إغلاق سطر الفلترة الرئيسي للمستخدمين الفعالين وطرد الموزع #}
+{% else %}
+<div class="flex items-center justify-center min-h-[50vh]">
+    <div class="text-center space-y-4">
+        <h2 class="text-rose-500 text-xl font-black">عذراً يا هندسة، الحسابات الفرعية والموزعون ليس لديهم صلاحية للوصول إلى الخزنة المركزية للوكالة.</h2>
+        <p class="text-slate-400 text-xs">إذا كنت موزعاً، يرجى مراجعة وتصفية حساباتك المالية مباشرة مع صاحب الشبكة التابع له.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('bg-slate-800', 'text-blue-400', 'border-b-2', 'border-blue-500');
+            btn.classList.add('text-slate-400');
+        });
+
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        
+        const activeBtn = document.getElementById('btn-' + tabId);
+        if(activeBtn) {
+            activeBtn.classList.add('bg-slate-800', 'text-blue-400', 'border-b-2', 'border-blue-500');
+            activeBtn.classList.remove('text-slate-400');
+        }
+    }
+
+    function openPaymentModal() {
+        document.getElementById('paymentModal').classList.remove('hidden');
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}

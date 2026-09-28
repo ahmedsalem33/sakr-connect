@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل حساب جديد | صقر كونكت</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <style>
+        /* هوية صقر كونكت: الأسود والذهبي */
+        body { background-color: #121212; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; }
+        .wizard-container { background: #1e1e1e; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top: 40px; margin-bottom: 40px; border-top: 5px solid #ffcc00; }
+        .system-header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .system-header h1 { font-weight: 900; color: #ffcc00; letter-spacing: 1px; font-family: Arial, sans-serif; margin-bottom: 10px; text-transform: uppercase; font-size: 28px;}
+        .system-header h3 { color: #ddd; font-weight: 600; font-size: 20px; }
+        .step-content { display: none; animation: fadeIn 0.5s; }
+        .step-content.active { display: block; }
+        .step-header { text-align: center; margin-bottom: 30px; font-weight: bold; color: #ffcc00; }
+        .form-label { font-weight: 600; color: #ccc; }
+        .form-control, .form-select { background-color: #2a2a2a; color: #fff; border: 1px solid #444; }
+        .form-control:focus, .form-select:focus { background-color: #333; color: #fff; border-color: #ffcc00; box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25); }
+        .nav-buttons { margin-top: 40px; }
+        .btn-info { background-color: #444; border-color: #444; color: #fff; }
+        .btn-info:hover { background-color: #ffcc00; border-color: #ffcc00; color: #000; }
+        .btn-success { background-color: #ffcc00; border-color: #ffcc00; color: #000; font-weight: bold; }
+        .btn-success:hover { background-color: #e6b800; border-color: #e6b800; color: #000; }
+        .btn-success:disabled { background-color: #555; border-color: #555; color: #888; cursor: not-allowed; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 40px; position: relative; }
+        .step-indicator::before { content: ''; position: absolute; top: 20px; left: 10%; right: 10%; height: 2px; background: #444; z-index: 1; }
+        .step-item { text-align: center; z-index: 2; width: 33%; color: #888; font-weight: 600; }
+        .step-icon { width: 40px; height: 40px; border-radius: 50%; background: #2a2a2a; color: #888; line-height: 36px; margin: 0 auto 10px; font-weight: bold; border: 2px solid #444; }
+        .step-item.active { color: #ffcc00; }
+        .step-item.active .step-icon { background: #ffcc00; color: #000; border-color: #ffcc00; box-shadow: 0 0 10px rgba(255, 204, 0, 0.5); }
+        .step-item.completed .step-icon { background: #ffcc00; color: #000; border-color: #ffcc00; }
+        .step-item.completed { color: #ccc; }
+        
+        /* حقوق المطور */
+        .developer-footer { margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px dashed #444; font-size: 14px; color: #aaa; line-height: 1.8; }
+        .developer-footer a { color: #ffcc00; text-decoration: none; font-weight: bold; }
+        .developer-footer a:hover { text-decoration: underline; }
+        .support-numbers { direction: ltr; display: inline-block; font-weight: bold; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-9 wizard-container">
+            
+            <div class="system-header">
+                <h1 dir="ltr">Welcome to Sakr Connect RADIUS</h1>
+                <h3>نظام إدارة الراديوس المتكامل</h3>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-4">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category in ['danger', 'error'] else ('warning' if category == 'warning' else 'success') }} text-center" style="font-weight: bold; border-radius: 8px;">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <div class="step-indicator">
+                <div class="step-item active" id="indicator-1">
+                    <div class="step-icon">1</div>
+                    <div>تسجيل بيانات الشبكة</div>
+                </div>
+                <div class="step-item" id="indicator-2">
+                    <div class="step-icon">2</div>
+                    <div>تسجيل البيانات الشخصية</div>
+                </div>
+                <div class="step-item" id="indicator-3">
+                    <div class="step-icon">3</div>
+                    <div>تسجيل المستخدم على النظام</div>
+                </div>
+            </div>
+
+            <form id="registerForm" action="/register" method="POST">
+                
+                <div class="step-content active" id="step-1">
+                    <h4 class="step-header">بيانات الاستخدام والخطة</h4>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الاستخدام فى</label>
+                            <select class="form-select" id="usage_type" name="usage_type" onchange="handleUsageChange()">
+                                <option value="network" selected>شبكات</option>
+                                <option value="cafe">كافيهات</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">اسم الخطة</label>
+                            <select class="form-select" id="plan_id" name="plan_id">
+                                </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3" id="network_name_wrapper">
+                        <div class="col-md-12">
+                            <label class="form-label" id="network_name_label">اسم الشبكة</label>
+                            <input type="text" class="form-control" id="network_name" name="network_name" placeholder="مثال: شبكة صقر راديوس">
+                        </div>
+                    </div>
+
+                    <!-- حقول مخفية للكشف التلقائي للدولة و WordPress -->
+                    <input type="hidden" name="country" id="detectedCountry" value="{{ detected_country }}">
+                    <input type="hidden" name="wp_ref" value="{{ wp_ref }}">
+                    <input type="hidden" name="wp_plan" value="{{ wp_plan }}">
+
+                </div>
+
+                <div class="step-content" id="step-2">
+                    <h4 class="step-header">البيانات الشخصية للتواصل</h4>
+                    
+                    <div class="mb-3">
+                        <label class="form-label" id="manager_name_label">اسم المدير بالعربي</label>
+                        <input type="text" class="form-control" name="fullname" placeholder="الاسم ثلاثي أو رباعي" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">رقم تليفون صحيح</label>
+                            <input type="text" class="form-control" name="phone1" placeholder="01xxxxxxxxx" required>
+                        </div>
+                        <div class="col-md-6" id="phone2_wrapper">
+                            <label class="form-label">رقم تليفون آخر (اختياري)</label>
+                            <input type="text" class="form-control" name="phone2" placeholder="01xxxxxxxxx">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني (اختياري)</label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="يمكن تركه فارغاً إذا لم يتوفر إيميل">
+                    </div>
+                </div>
+
+                <div class="step-content" id="step-3">
+                    <h4 class="step-header">إعدادات تسجيل الدخول</h4>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">اسم الدخول (Username)</label>
+                        <input type="text" class="form-control" id="usernameInput" name="username" placeholder="مثال: admin143" style="direction: ltr; text-align: left;" required autocomplete="off">
+                        <div id="usernameStatus" class="mt-2" style="font-size: 13px; font-weight: bold; display: none;"></div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">كلمة السر</label>
+                            <input type="password" class="form-control" id="password" name="password" style="direction: ltr; text-align: left;" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">تأكيد كلمة السر</label>
+                            <input type="password" class="form-control" id="confirm_password" style="direction: ltr; text-align: left;" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between nav-buttons">
+                    <button type="button" class="btn btn-secondary px-4" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">رجوع</button>
+                    <button type="button" class="btn btn-info px-5" id="nextBtn" onclick="nextPrev(1)">التالي</button>
+                </div>
+            </form>
+
+            <div class="developer-footer">
+                <div>حقوق النشر مسجلة باسم مشروع <strong>صقر كونكت (Sakr Connect)</strong> &copy; 2026</div>
+                <div>تطوير وبرمجة: <a href="https://www.facebook.com/sakrmediaagency" target="_blank">Sakr Media Agency (صقر ميديا)</a></div>
+                <div>بإدارة المطور: <a href="https://www.facebook.com/ahmedsalemJournalist" target="_blank">أحمد سالم الملواني</a></div>
+                <div>الدعم الفني: <span class="support-numbers">01033379719</span></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="packages-data">
+    {{ dynamic_packages | default([]) | tojson }}
+</script>
+
+<script>
+    let dynamicPackages = [];
+    try {
+        const rawData = document.getElementById('packages-data').textContent;
+        dynamicPackages = rawData.trim() ? JSON.parse(rawData) : [];
+    } catch (e) {
+        console.error("خطأ في قراءة الباقات:", e);
+    }
+
+    // تعيين الباقة المحددة من WordPress
+    const wpPlan = "{{ wp_plan }}";
+    if (wpPlan) {
+        document.getElementById('plan_id').value = wpPlan;
+    }
+
+    let currentTab = 0;
+    showTab(currentTab);
+
+    function showTab(n) {
+        let tabs = document.getElementsByClassName("step-content");
+        tabs[n].classList.add("active");
+        
+        if (n == 0) {
+            document.getElementById("prevBtn").style.display = "none";
+        } else {
+            document.getElementById("prevBtn").style.display = "inline-block";
+        }
+        
+        if (n == (tabs.length - 1)) {
+            let nextBtn = document.getElementById("nextBtn");
+            nextBtn.innerHTML = "إتمام الاشتراك";
+            nextBtn.classList.remove("btn-info");
+            nextBtn.classList.add("btn-success");
+        } else {
+            let nextBtn = document.getElementById("nextBtn");
+            nextBtn.innerHTML = "التالي";
+            nextBtn.classList.remove("btn-success");
+            nextBtn.classList.add("btn-info");
+        }
+        updateIndicator(n);
+    }
+
+    function nextPrev(n) {
+        let tabs = document.getElementsByClassName("step-content");
+        let nextBtn = document.getElementById("nextBtn");
+        
+        if (n == 1 && !validateForm()) return false;
+        if (nextBtn.disabled) return false; 
+        
+        tabs[currentTab].classList.remove("active");
+        currentTab = currentTab + n;
+        
+        if (currentTab >= tabs.length) {
+            if(document.getElementById('password').value !== document.getElementById('confirm_password').value) {
+                alert("كلمة السر غير متطابقة!");
+                currentTab = currentTab - n;
+                tabs[currentTab].classList.add("active");
+                return false;
+            }
+            document.getElementById("registerForm").submit();
+            return false;
+        }
+        showTab(currentTab);
+    }
+
+    function validateForm() {
+        let valid = true;
+        
+        if (currentTab === 0) {
+            let planSelect = document.getElementById("plan_id");
+            let networkInput = document.getElementById("network_name");
+
+            if (!planSelect.value || planSelect.value === "") {
+                planSelect.classList.add("is-invalid");
+                valid = false;
+            } else {
+                planSelect.classList.remove("is-invalid");
+            }
+
+            if (!networkInput.value.trim()) {
+                networkInput.classList.add("is-invalid");
+                valid = false;
+            } else {
+                networkInput.classList.remove("is-invalid");
+            }
+        }
+
+        let inputs = document.getElementsByClassName("step-content")[currentTab].querySelectorAll("input[required]");
+        for (let i = 0; i < inputs.length; i++) {
+            if (inputs[i].value.trim() == "") {
+                inputs[i].classList.add("is-invalid");
+                valid = false;
+            } else {
+                inputs[i].classList.remove("is-invalid");
+            }
+        }
+        return valid;
+    }
+
+    function updateIndicator(n) {
+        let items = document.getElementsByClassName("step-item");
+        for (let i = 0; i < items.length; i++) {
+            items[i].classList.remove("active");
+            if(i < n) items[i].classList.add("completed");
+            else items[i].classList.remove("completed");
+        }
+        items[n].classList.add("active");
+    }
+
+    function handleUsageChange() {
+        let usageType = document.getElementById("usage_type").value;
+        let planSelect = document.getElementById("plan_id");
+        let networkNameLabel = document.getElementById("network_name_label");
+        let networkInput = document.getElementById("network_name");
+        
+        planSelect.innerHTML = "";
+
+        if (usageType === "cafe") {
+            networkNameLabel.innerHTML = "اسم الكافيه";
+            networkInput.placeholder = "مثال: كافيه صقر";
+        } else {
+            networkNameLabel.innerHTML = "اسم الشبكة";
+            networkInput.placeholder = "مثال: شبكة صقر راديوس";
+        }
+
+        let filteredPackages = dynamicPackages.filter(pkg => pkg.type === usageType);
+        
+        if(filteredPackages.length > 0) {
+            filteredPackages.forEach(pkg => {
+                let option = document.createElement("option");
+                option.value = pkg.id;
+                option.text = pkg.name;
+                planSelect.appendChild(option);
+            });
+        } else {
+            planSelect.innerHTML = '<option value="">لا توجد باقات متاحة حالياً لهذا القسم</option>';
+        }
+    }
+
+    window.onload = handleUsageChange;
+
+    // ==========================================
+    // كود الفحص اللحظي لاسم المستخدم (AJAX)
+    // ==========================================
+    document.getElementById('usernameInput').addEventListener('blur', async function() {
+        let username = this.value.trim();
+        let statusEl = document.getElementById('usernameStatus');
+        let nextBtn = document.getElementById('nextBtn');
+        
+        if(username.length < 3) {
+            statusEl.style.display = 'none';
+            nextBtn.disabled = false;
+            return; 
+        }
+
+        try {
+            let response = await fetch('/api/check_username', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username })
+            });
+            let result = await response.json();
+            
+            if(result.exists) {
+                statusEl.textContent = '⚠️ اسم المستخدم هذا مسجل مسبقاً، يرجى اختيار اسم آخر.';
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#ff4444'; 
+                nextBtn.disabled = true; 
+            } else {
+                statusEl.textContent = '✅ اسم المستخدم متاح.';
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#00C851'; 
+                nextBtn.disabled = false; 
+            }
+        } catch(e) {
+            console.error("Error checking username:", e);
+        }
+    });
+</script>
+
+</body>
+</html>

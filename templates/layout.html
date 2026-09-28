@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('lang', 'ar') }}" dir="{{ 'ltr' if session.get('lang') == 'en' else 'rtl' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name|default('Sakr Connect Radius') }} | لوحة التحكم</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #0b111e; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        
+        /* تأثير الشريط الإخباري المتحرك */
+        .ticker-container { overflow: hidden; white-space: nowrap; width: 100%; position: relative; }
+        .ticker-text { display: inline-block; padding-right: 100%; animation: ticker-scroll 35s linear infinite; }
+        @keyframes ticker-scroll { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(100%, 0, 0); } }
+        
+        /* الزر العائم للتواصل */
+        .fab-container { position: fixed; bottom: 20px; left: 20px; z-index: 50; display: flex; flex-direction: column; gap: 10px; }
+        .fab-btn { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; }
+        .fab-btn:hover { transform: scale(1.1); }
+        .fab-whatsapp { background-color: #25D366; }
+        .fab-telegram { background-color: #0088cc; }
+
+        .text-royal-gold { color: #FFD700; text-shadow: 0 2px 4px rgba(255, 215, 0, 0.3); }
+        .icon-gradient { transition: all 0.3s ease; }
+        .nav-item:hover .icon-gradient { background: linear-gradient(135deg, #FFD700, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; transform: scale(1.1); }
+        
+        /* تحكم القائمة الجانبية المطورة */
+        .sidebar { width: 16rem; transition: width 0.3s ease; display: flex; flex-direction: column; flex-shrink: 0; z-index: 50; }
+        .sidebar.collapsed { width: 4.5rem; }
+        .sidebar.collapsed .sidebar-text { display: none !important; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 0.75rem 0; }
+        
+        /* نظام إظهار الأيقونات فقط عند الطي */
+        .sidebar.collapsed .icon-only { display: block !important; }
+        .icon-only { display: none; }
+        
+        /* نتائج البحث اللحظي */
+        #live-search-results { background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+
+        /* ======================================================== */
+        /* التعديلات الجديدة: إصلاحات الطي والقوائم (Z-index) */
+        /* ======================================================== */
+        
+        /* 1. تنسيق اسم الشبكة عند طي القائمة (Collapse) */
+        .sidebar.collapsed .network-block { padding: 0.5rem 0.25rem; }
+        .sidebar.collapsed .network-block .network-label { display: none; }
+        .sidebar.collapsed .network-block .network-name { 
+            font-size: 0.65rem; 
+            white-space: normal; 
+            word-break: break-word; 
+            line-height: 1.4; 
+            padding: 0 2px; 
+        }
+        
+        /* 2. رفع مستوى طبقات القوائم المنسدلة للكروت (Dropdowns & Offcanvas) */
+        .dropdown-menu, [class*="dropdown-menu"], .dropdown-content, .offcanvas, .side-panel {
+            z-index: 9999 !important;
+        }
+        /* إجبار حاويات الكروت على السماح بظهور القوائم المنسدلة خارج حدودها */
+        .card-container, [class*="card"] {
+            overflow: visible !important;
+        }
+    </style>
+
+    {% if is_locked %}
+    <style>
+        /* إخفاء القائمة الجانبية لتوفير مساحة لصفحة الدفع */
+        aside, .sidebar, #main-sidebar { display: none !important; }
+        main, .main-content { width: 100% !important; margin-right: 0 !important; margin-left: 0 !important; padding: 0 !important; }
+    </style>
+    {% endif %}
+</head>
+<body class="text-slate-200 h-screen flex flex-col overflow-hidden select-none">
+
+    {% set current_role = (session.get('role') or '') | lower %}
+
+    <header class="bg-[#0f172a] border-b border-slate-800 h-16 flex items-center justify-between px-4 z-40 shrink-0 relative">
+        <div class="flex items-center gap-4">
+            {% if not is_locked %}
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            {% endif %}
+
+            <div class="hidden md:flex relative w-80 mr-2 items-center">
+                <input type="text" id="global-live-search" oninput="triggerLiveSearch()" placeholder="البحث اللحظي في النظام..." class="w-full bg-[#151f32] border border-slate-700 rounded-r-lg pl-3 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" {{ 'disabled' if is_locked else '' }}>
+                <button onclick="submitSearch()" class="bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white rounded-l-lg px-4 py-2 text-xs transition flex items-center justify-center h-[34px]" {{ 'disabled' if is_locked else '' }}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+                <div id="live-search-results" class="absolute top-11 right-0 left-0 hidden z-50 p-2"></div>
+            </div>
+        </div>
+
+        {# شاشة المتابعة المالية #}
+        {% if session.get('user_id') %}
+        <div class="hidden lg:flex items-center gap-3">
+            <div class="bg-amber-500/10 border border-amber-500/30 px-4 py-1 rounded-full flex items-center gap-2 text-xs font-bold text-amber-400">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>كود التحصيل المركزي:</span>
+                <span class="font-mono tracking-wider">{{ session.get('billing_code', 'غير متوفر') }}</span>
+            </div>
+            {% if session.get('network_name') %}
+            <div class="bg-blue-500/10 border border-blue-500/30 px-4 py-1 rounded-full flex items-center gap-2 text-xs font-bold text-blue-400">
+                <span>🌐 النظام النشط:</span>
+                <span>{{ session.get('network_name') }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <button onclick="toggleHeaderDropdown('profile-menu')" class="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:bg-slate-700 transition">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                </button>
+                <div id="profile-menu" class="hidden absolute left-0 mt-2 w-52 bg-[#0f172a] border border-slate-800 rounded-lg shadow-xl z-50 text-xs py-1">
+                    <div class="px-4 py-2 border-b border-slate-800 space-y-1">
+                        <p class="font-bold text-white">{{ session.get('fullname', 'مدير الجلسة') }}</p>
+                        <p class="text-[10px] text-slate-500 font-mono">ROLE: {{ current_role | upper }}</p>
+                    </div>
+                    <a href="/logout" class="block px-4 py-2 hover:bg-slate-800 text-rose-400 transition">تسجيل الخروج</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden h-full relative">
+        
+        <aside id="main-sidebar" class="sidebar bg-[#0f172a] border-l border-slate-800 z-50 h-full">
+            
+            <div class="p-4 border-b border-slate-800 text-center shrink-0 flex flex-col justify-center min-h-[70px]">
+                <span class="icon-only text-royal-gold text-2xl font-black uppercase tracking-widest block">SCR</span>
+                <div class="sidebar-text">
+                    <h1 class="text-royal-gold text-lg font-black tracking-wider uppercase">Sakr Connect</h1>
+                    <p class="text-[9px] font-bold mt-1 text-slate-400">بوابة التحكم لإدارة سيرفرات الراديوس</p>
+                </div>
+            </div>
+
+            {% if current_role in ['network', 'reseller'] %}
+            <div class="p-3 border-b border-slate-800 text-center transition-all duration-300 network-block">
+                <div class="bg-blue-900/20 border border-blue-800/40 rounded-lg py-2 px-1 shadow-inner">
+                    <span class="block text-[9px] text-blue-400 font-bold mb-0.5 uppercase tracking-widest network-label">إدارة شبكة</span>
+                    <span class="block font-black text-white text-sm truncate px-2 text-royal-gold network-name">{{ session.get('network_name', 'شبكة مخصصة') }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <nav class="flex-1 p-3 space-y-1 text-xs font-semibold overflow-y-auto custom-scrollbar">
+                
+                <a href="/system/dashboard" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition bg-slate-800/40 border-r-2 border-blue-500">
+                    <span class="text-sm icon-gradient">📊</span><span class="sidebar-text">الرئيسية (لوحة العمليات)</span>
+                </a>
+                <a href="/client/account" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">💼</span><span class="sidebar-text">حساب صقر كونكت (الفواتير)</span>
+                </a>
+
+                {% if current_role in ['network', 'reseller'] %}
+                <div class="pt-4 mt-4 border-t border-slate-800/50 sidebar-text">
+                    <span class="px-3 text-[10px] text-blue-400 font-bold mb-2 block">إدارة الشبكة والموزعين</span>
+                </div>
+                <a href="/admin/servers" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">🖥️</span><span class="sidebar-text">السيرفرات والربط المركزي</span>
+                </a>
+                {% if session.get('show_merge') != False %}
+                <a href="/system/merge" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">🌐</span><span class="sidebar-text">إدارة الدمج والخطوط</span>
+                </a>
+                {% endif %}
+                <a href="/admin/settings" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">⚙️</span><span class="sidebar-text">إعدادات النظام والبراندينج</span>
+                </a>
+                <a href="/network/team" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">👑</span><span class="sidebar-text">المديرين والموزعين التابعين</span>
+                </a>
+                <a href="/manage/users" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition text-emerald-400">
+                    <span class="text-sm icon-gradient">👥</span><span class="sidebar-text">جدول إدارة المشتركين</span>
+                </a>
+                <a href="/manage/devices" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">📡</span><span class="sidebar-text">الأجهزة والبرودباند</span>
+                </a>
+                <a href="/routers/map" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">🗺️</span><span class="sidebar-text">خريطة الشبكة الحية</span>
+                </a>
+                <a href="/manage/vouchers" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">🎟️</span><span class="sidebar-text">كروت وتذاكر الهوت سبوت</span>
+                </a>
+                <a href="/manage/recharge_cards" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">💳</span><span class="sidebar-text">طباعة كروت الشحن</span>
+                </a>
+                <a href="/manage/offers" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition text-amber-400">
+                    <span class="text-sm icon-gradient">🎁</span><span class="sidebar-text">عروض وباقات الشبكة</span>
+                </a>
+                <a href="/user_finance" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">💰</span><span class="sidebar-text">التقارير المالية والأرباح</span>
+                </a>
+                {% endif %}
+
+                {% if current_role == 'cafe' %}
+                <div class="pt-4 mt-4 border-t border-slate-800/50 sidebar-text">
+                    <span class="px-3 text-[10px] text-purple-400 font-bold mb-2 block">منظومة إدارة الكافيهات</span>
+                </div>
+                <a href="/manage/vouchers" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition text-purple-300">
+                    <span class="text-sm icon-gradient">🎟️</span><span class="sidebar-text">كروت وتذاكر الهوت سبوت</span>
+                </a>
+                <a href="/user_finance" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">💰</span><span class="sidebar-text">مبيعات الوردية والتقرير المالي</span>
+                </a>
+                {% endif %}
+
+                <div class="pt-4 mt-4 border-t border-slate-800/50 sidebar-text">
+                    <span class="px-3 text-[10px] text-slate-500 font-bold mb-2 block">الدعم والمساعدة</span>
+                </div>
+                <a href="/support" class="nav-item flex items-center gap-2.5 p-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+                    <span class="text-sm icon-gradient">🛠️</span><span class="sidebar-text">تذاكر الدعم الفني</span>
+                </a>
+            </nav>
+
+            <div class="p-3 border-t border-slate-800 text-center bg-[#0a101d] shrink-0 min-h-[65px] flex flex-col justify-center items-center">
+                <span class="icon-only text-slate-500 text-xs font-bold block">V1.0</span>
+                <div class="sidebar-text transition-all duration-300">
+                    <div class="text-[10px] font-bold tracking-wide uppercase text-royal-gold">Sakr Media Agency</div>
+                    <div class="text-[8px] font-bold text-slate-500 mt-1">تطوير م/ أحمد سالم الملواني</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-y-auto min-w-0 relative custom-scrollbar bg-[#0b111e]">
+            
+            {# ========================================================= #}
+            {# شاشة الإغلاق الاحترافية (Lock Screen) تظهر فوق كل شيء ما عدا صفحة الفواتير #}
+            {# ========================================================= #}
+            {% if is_locked and request.path != '/client/account' %}
+            <div class="absolute inset-0 z-[60] bg-[#0b111e]/90 backdrop-blur-sm flex items-center justify-center p-4">
+                <div class="bg-[#0f172a] border border-rose-900/50 p-8 rounded-2xl shadow-2xl max-w-lg w-full text-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-rose-800"></div>
+                    <span class="text-6xl mb-4 block drop-shadow-lg">🔒</span>
+                    <h2 class="text-2xl font-black text-rose-500 mb-2">عذراً، تم إيقاف الخدمة مؤقتاً</h2>
+                    <p class="text-slate-300 text-sm mb-8 leading-relaxed">
+                        {% if not has_active_sub and not is_trial_active %}
+                        لقد انتهت الفترة التجريبية أو انتهت صلاحية باقتك الحالية.<br>
+                        شبكتك وكروتك المطبوعة لا تزال تعمل، لكن تم إغلاق لوحة التحكم. يرجى تجديد الاشتراك لاستعادة صلاحيات الإدارة الكاملة.
+                        {% else %}
+                        يرجى مراجعة حساباتك لتفعيل النظام.
+                        {% endif %}
+                    </p>
+                    <a href="/client/account" class="inline-flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-lg shadow-blue-900/20">
+                        <span>الذهاب لصفحة الفواتير والتجديد</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {# ========================================================= #}
+
+            <div class="p-4 md:p-6 flex-1 flex flex-col">
+                
+                {% if not is_locked %}
+                    {% if radar_logs and radar_logs|length > 0 %}
+                    <div class="bg-rose-950/40 border border-rose-900/50 rounded-xl p-3 flex items-center gap-3 shadow-lg mb-5 shrink-0">
+                        <span class="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500 animate-pulse text-lg">🛡️</span>
+                        <div>
+                            <h4 class="text-xs font-black text-rose-400">تنبيه أمني وحالة النظام الحالية</h4>
+                            <div class="text-[11px] text-slate-300 mt-0.5 font-mono space-y-1">
+                                {% for log in radar_logs %}
+                                <p>🔴 [{{ log.action }}]: {{ log.device_info | default('تنبيه نظام مجهول') }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if global_broadcast %}
+                    <div class="bg-blue-950/30 border border-blue-900/40 rounded-xl py-2 px-4 flex items-center overflow-hidden shadow-md mb-5 shrink-0">
+                        <span class="text-blue-400 font-bold ml-3 shrink-0 text-lg">📢</span>
+                        <div class="ticker-container">
+                            <div class="ticker-text text-blue-400 text-xs font-bold">{{ global_broadcast }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <div class="w-full flex-1 relative overflow-visible">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+
+            <footer class="w-full text-center text-[11px] text-sky-400 font-bold border-t border-slate-800 bg-[#0f172a] py-4 mt-auto shrink-0 relative z-10">
+                جميع الحقوق محفوظة © 2026 - نظام Sakr Connect | وكالة صقر ميديا (Sakr Media Agency)
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() { document.getElementById('main-sidebar').classList.toggle('collapsed'); }
+        function toggleHeaderDropdown(id) {
+            const d = document.getElementById(id);
+            const isHidden = d.classList.contains('hidden');
+            document.querySelectorAll('header .absolute').forEach(el => el.classList.add('hidden'));
+            if(isHidden) d.classList.remove('hidden');
+        }
+        window.onclick = e => { 
+            if(!e.target.closest('header') && !e.target.closest('#global-live-search')) {
+                document.querySelectorAll('header .absolute').forEach(el => el.classList.add('hidden'));
+                document.getElementById('live-search-results').classList.add('hidden');
+            }
+        };
+
+        function triggerLiveSearch() {
+            const query = document.getElementById('global-live-search').value.trim();
+            const resultsDiv = document.getElementById('live-search-results');
+            if (query.length < 2) { resultsDiv.classList.add('hidden'); return; }
+            
+            fetch(`/api/quick_drawer/all?search=${query}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success' && data.users && data.users.length > 0) {
+                        let html = '';
+                        data.users.forEach(u => {
+                            html += `<div class="p-2 hover:bg-slate-800 rounded cursor-pointer text-xs flex justify-between border-b border-slate-800/40" onclick="location.href='/manage/users?search=${u.username}'">
+                                        <span class="text-white font-bold">${u.name}</span>
+                                        <span class="text-slate-400 font-mono">${u.username}</span>
+                                     </div>`;
+                        });
+                        resultsDiv.innerHTML = html;
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = '<div class="text-slate-500 text-xs p-2 text-center">لا توجد نتائج مطابقة</div>';
+                        resultsDiv.classList.remove('hidden');
+                    }
+                }).catch(() => { resultsDiv.classList.add('hidden'); });
+        }
+        function submitSearch() {
+            const query = document.getElementById('global-live-search').value.trim();
+            if(query) location.href = `/manage/users?search=${query}`;
+        }
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

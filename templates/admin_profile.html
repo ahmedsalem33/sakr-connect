@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-[800px] mx-auto p-4 md:p-8 text-right" dir="rtl">
+    
+    <div class="mb-8 border-b border-slate-800 pb-5">
+        <h1 class="text-3xl font-black text-white flex items-center gap-3">
+            <span class="text-blue-500 bg-blue-500/10 p-2 rounded-xl">🦅</span> 
+            الملف الشخصي للقيادة
+        </h1>
+        <p class="text-slate-400 text-sm mt-2 font-medium">إدارة بيانات اعتماد الدخول الخاصة بك كمسؤول في الإدارة المركزية.</p>
+    </div>
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-3xl p-8 shadow-2xl relative">
+        
+        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-800">
+            <div class="w-16 h-16 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span class="text-2xl text-white font-black">
+                    {{ session.get('fullname', 'A')[0] | upper }}
+                </span>
+            </div>
+            <div>
+                <h2 class="text-xl font-black text-white">{{ admin_user.fullname if admin_user else session.get('fullname') }}</h2>
+                <span class="bg-blue-500/20 text-blue-400 text-xs px-3 py-1 rounded-lg font-bold mt-2 inline-block">
+                    {{ 'المالك الأساسي' if session.get('role') == 'super_admin' else 'مدير نظام' }}
+                </span>
+            </div>
+        </div>
+
+        {% if not admin_user %}
+        <div class="bg-amber-900/20 border border-amber-500/30 p-5 rounded-2xl mb-6">
+            <p class="text-amber-400 font-bold text-sm">
+                ⚠️ بياناتك مسجلة في الجلسة فقط وليست مسجلة في جدول (SystemAdmin). يُرجى إضافتك كمدير من لوحة "مركز السيطرة" لتتمكن من تغيير بياناتك.
+            </p>
+        </div>
+        {% else %}
+        <form action="{{ url_for('auth.admin_profile') }}" method="POST" class="space-y-6">
+            
+            <div>
+                <label class="block text-sm font-bold text-slate-400 mb-2">الاسم الكامل (يظهر في سجلات النظام)</label>
+                <input type="text" name="fullname" value="{{ admin_user.fullname }}" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none focus:border-blue-500 transition-colors">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-400 mb-2">اسم المستخدم للدخول</label>
+                    <input type="text" name="username" value="{{ admin_user.username }}" required class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white font-mono outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-400 mb-2">تغيير كلمة المرور</label>
+                    <input type="password" name="password" placeholder="اتركها فارغة إذا لم ترد التغيير" class="w-full bg-[#0b111e] border border-slate-700 rounded-xl p-3.5 text-white outline-none focus:border-amber-500 transition-colors">
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-800 flex justify-end">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-3.5 rounded-xl font-black shadow-xl transition-all transform hover:-translate-y-1">
+                    💾 حفظ وتحديث البيانات
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,521 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6 bg-gray-900/50 text-white min-h-screen" dir="rtl">
+    
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold border-r-4 border-blue-600 pr-3">سيرفرات الشبكة</h1>
+            <p class="text-sm text-gray-400 mt-1">الإدارة الشاملة لخوادم المايكروتيك وربط الراديوس (صقر كونكت)</p>
+        </div>
+    </div>
+
+    <div class="bg-[#1e293b]/60 p-4 rounded-t-xl border-t border-x border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg shrink-0">
+        <div class="flex items-center gap-2">
+            <button onclick="document.getElementById('addServerModal').classList.remove('hidden')" class="bg-[#7c4dff] hover:bg-[#651fff] text-white w-10 h-10 rounded-lg flex items-center justify-center transition shadow-md" title="إضافة سيرفر جديد">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            </button>
+            <button onclick="syncSelectedServer()" class="bg-[#00b0ff] hover:bg-[#0091ea] text-white w-10 h-10 rounded-lg flex items-center justify-center transition shadow-md" title="مزامنة السيرفر المحدد">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"/></svg>
+            </button>
+            <button onclick="directEditSelectedServer()" class="bg-amber-500 hover:bg-amber-600 text-white w-10 h-10 rounded-lg flex items-center justify-center transition shadow-md" title="تعديل بيانات السيرفر">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <button onclick="openOptionsModalForChecked()" class="bg-pink-600 hover:bg-pink-700 text-white px-5 h-10 rounded-lg font-bold text-xs transition shadow-md tracking-wide">
+                خيارات
+            </button>
+        </div>
+        
+        <div class="w-full sm:w-64">
+            <input type="text" id="tableSearch" onkeyup="searchTable()" placeholder="ابحث باسم السيرفر..." class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition shadow-inner">
+        </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-b-xl shadow-2xl border-b border-x border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-center border-collapse">
+                <thead>
+                    <tr class="bg-[#0f172a]/80 border-b border-gray-700 text-gray-400 text-xs font-bold">
+                        <th class="p-4 w-12 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"></th>
+                        <th class="p-4 w-12">#</th>
+                        <th class="p-4 text-right">اسم السيرفر</th>
+                        <th class="p-4">نوع السيرفر</th>
+                        <th class="p-4">معرف الـ NAS</th>
+                        <th class="p-4">الآي بي (IP)</th>
+                        <th class="p-4">بورت الـ API</th>
+                        <th class="p-4">حالة السيرفر</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs divide-y divide-gray-700 font-medium" id="serverTableBody">
+                    {% for server in servers %}
+                    <tr class="hover:bg-gray-750/70 transition-colors server-row">
+                        <td class="p-4 text-center">
+                            <input type="checkbox" class="server-checkbox rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+                                   data-id="{{ server.id }}" 
+                                   data-name="{{ server.name }}"
+                                   data-nas-id="{{ server.nas_id }}"
+                                   data-ip="{{ server.ip_address }}"
+                                   data-api-port="{{ server.api_port }}"
+                                   data-coa-port="{{ server.coa_port }}"
+                                   data-secret="{{ server.radius_secret }}"
+                                   data-user="{{ server.api_user }}">
+                        </td>
+                        <td class="p-4 text-gray-400 font-mono">{{ loop.index }}</td>
+                        <td class="p-4 text-right">
+                            <span class="text-slate-200 font-bold text-sm">{{ server.name }}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="bg-slate-700 text-slate-300 px-2.5 py-0.5 rounded-md font-bold text-[10px]">{{ server.server_type }}</span>
+                        </td>
+                        <td class="p-4 font-mono">
+                            <span class="bg-blue-900/30 text-blue-400 px-2.5 py-0.5 rounded-md border border-blue-800/40 text-[11px]">{{ server.nas_id }}</span>
+                        </td>
+                        <td class="p-4 font-mono text-slate-300 font-bold text-sm">{{ server.ip_address }}</td>
+                        <td class="p-4 font-mono text-slate-400">{{ server.api_port }}</td>
+                        <td class="p-4">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full {% if server.status == 'online' %}bg-green-500 animate-pulse{% else %}bg-red-500{% endif %}"></span>
+                                <span class="{% if server.status == 'online' %}text-green-400{% else %}text-red-400{% endif %} font-bold">{% if server.status == 'online' %}متصل{% else %}مفصول{% endif %}</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not servers %}
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-gray-500 font-bold">لا يوجد سيرفرات مضافة حالياً. استخدم زر "إضافة سيرفر جديد".</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="optionsModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
+    <div class="bg-white text-gray-900 rounded-xl w-full max-w-md shadow-2xl overflow-hidden p-6 relative transform scale-95 transition-transform duration-300">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-3">
+            <h2 class="text-lg font-black text-gray-800 flex items-center gap-2">
+                <span class="inline-block w-1.5 h-5 bg-purple-600 rounded"></span>
+                <span>خيارات التحكم المركزية</span>
+                <span id="modalServerName" class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded"></span>
+            </h2>
+            <button type="button" onclick="closeOptionsModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-3.5 flex flex-col">
+            <button onclick="executeServerAction('reinstall')" class="w-full bg-[#7c4dff] hover:bg-[#651fff] text-white font-bold py-3 px-4 rounded-lg transition shadow-md text-sm tracking-wide">
+                كود الربط (إعادة تركيب النظام)
+            </button>
+            <button onclick="executeServerAction('reboot')" class="w-full bg-[#00b0ff] hover:bg-[#0091ea] text-white font-bold py-3 px-4 rounded-lg transition shadow-md text-sm tracking-wide flex items-center justify-center gap-2">
+                إعادة تشغيل السيرفر عن بُعد
+            </button>
+            <button onclick="executeServerAction('edit_form')" class="w-full bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                تعديل بيانات السيرفر
+            </button>
+            <button onclick="executeServerAction('delete_with_subs')" class="w-full bg-[#ff5252] hover:bg-[#ff1744] text-white font-bold py-3 px-4 rounded-lg transition shadow-md text-sm tracking-wide flex items-center justify-center gap-2 mt-4 border border-red-700">
+                إزالة السيرفر نهائياً
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="addServerModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
+    <div class="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl shadow-2xl">
+        <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="text-blue-500">➕</span> ربط خادم مايكروتيك جديد
+            </h2>
+            <button type="button" onclick="document.getElementById('addServerModal').classList.add('hidden')" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="addServerForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">اسم السيرفر</label>
+                        <input type="text" id="name" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:border-blue-500 focus:outline-none text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">معرف السيرفر (NAS-ID)</label>
+                        <input type="text" id="nas_id" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none font-mono text-blue-400" placeholder="NAS-Name">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">الآي بي (IP Address)</label>
+                        <input type="text" id="ip_address" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none font-mono text-white" placeholder="192.168.x.x">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">كلمة سر الراديوس (Radius Secret)</label>
+                        <input type="text" id="radius_secret" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none font-mono text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">بورت الـ API</label>
+                        <input type="number" id="api_port" value="8728" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none font-mono text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">بورت الطرد (CoA Port)</label>
+                        <input type="number" id="coa_port" value="3799" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none font-mono text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">يوزر الـ API</label>
+                        <input type="text" id="api_user" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none text-white" placeholder="admin">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">باسوورد الـ API</label>
+                        <input type="password" id="api_password" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm focus:outline-none text-white">
+                    </div>
+                </div>
+                <div class="flex items-center mt-4 bg-gray-900/60 p-3 rounded border border-gray-700">
+                    <input type="checkbox" id="bypass_check" class="w-4 h-4 text-blue-600 bg-gray-800 border-gray-700 rounded focus:ring-blue-500 focus:outline-none ml-2">
+                    <label for="bypass_check" class="text-sm font-bold text-amber-400 cursor-pointer select-none">
+                        تخطي فحص الاتصال (تسجيل السيرفر في وضع المحاكاة / Offline).
+                    </label>
+                </div>
+                <div id="statusMessage" class="hidden mt-4 p-3 rounded text-sm text-center font-bold"></div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-700 mt-6">
+                    <button type="button" onclick="document.getElementById('addServerModal').classList.add('hidden')" class="bg-gray-600 hover:bg-gray-500 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-colors">إلغاء</button>
+                    <button type="submit" id="saveBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-colors flex items-center">
+                        <span id="btnText">حفظ السيرفر</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="editServerModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
+    <div class="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl shadow-2xl">
+        <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="text-amber-500">✏️</span> تعديل بيانات السيرفر
+            </h2>
+            <button type="button" onclick="document.getElementById('editServerModal').classList.add('hidden')" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="editServerForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">اسم السيرفر</label>
+                        <input type="text" id="edit_name" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">معرف السيرفر (NAS-ID)</label>
+                        <input type="text" id="edit_nas_id" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm font-mono text-blue-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">الآي بي (IP Address)</label>
+                        <input type="text" id="edit_ip_address" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm font-mono text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">كلمة سر الراديوس (Secret)</label>
+                        <input type="password" id="edit_radius_secret" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm font-mono text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">بورت الـ API</label>
+                        <input type="number" id="edit_api_port" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm font-mono text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">بورت الطرد (CoA Port)</label>
+                        <input type="number" id="edit_coa_port" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm font-mono text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">يوزر الـ API</label>
+                        <input type="text" id="edit_api_user" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 mb-1">باسوورد الـ API (اتركه فارغاً للاحتفاظ بالقديم)</label>
+                        <input type="password" id="edit_api_password" class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-sm text-white focus:outline-none">
+                    </div>
+                </div>
+                <div id="editStatusMessage" class="hidden mt-4 p-3 rounded text-sm text-center font-bold"></div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-700 mt-6">
+                    <button type="button" onclick="document.getElementById('editServerModal').classList.add('hidden')" class="bg-gray-600 hover:bg-gray-500 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-colors">إلغاء</button>
+                    <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition-colors">حفظ التعديلات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="scriptModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4" dir="rtl">
+    <div class="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-xl shadow-2xl">
+        <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50">
+            <h2 class="text-sm font-bold text-purple-400 flex items-center gap-2">
+                <span>📋 كود الربط التلقائي بـ (صقر كونكت)</span>
+            </h2>
+            <button type="button" onclick="document.getElementById('scriptModal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-5 space-y-3">
+            <p class="text-xs text-gray-300 font-bold">انسخ السكريبت بالكامل وضعه داخل نافذة <span class="text-amber-400">New Terminal</span> في جهاز المايكروتيك لإتمام عملية الربط الفنية فوراً:</p>
+            <textarea id="scriptContentBox" readonly class="w-full h-40 bg-[#0b111e] text-green-400 border border-gray-700 rounded-lg p-3 font-mono text-xs focus:outline-none select-all" dir="ltr"></textarea>
+            <div class="flex justify-end pt-2">
+                <button onclick="document.getElementById('scriptModal').classList.add('hidden')" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md text-xs font-bold transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// كائن الذاكرة المستقل لتخزين حالة السيرفر المحدد لمنع أخطاء الـ null تماماً
+let activeServerState = null;
+
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.server-checkbox');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+}
+
+// استخراج بيانات السيرفر وتخزينها في الذاكرة
+function getSelectedServer() {
+    const checkedBoxes = document.querySelectorAll('.server-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        alert('يرجى تحديد السيرفر من الجدول أولاً بوضع علامة الصح (✓).');
+        return null;
+    }
+    if (checkedBoxes.length > 1) {
+        alert('يرجى تحديد سيرفر واحد فقط لتنفيذ العملية.');
+        return null;
+    }
+    const box = checkedBoxes[0];
+    return {
+        id: box.getAttribute('data-id'),
+        name: box.getAttribute('data-name'),
+        nas_id: box.getAttribute('data-nas-id'),
+        ip: box.getAttribute('data-ip'),
+        api_port: box.getAttribute('data-api-port'),
+        coa_port: box.getAttribute('data-coa-port'),
+        secret: box.getAttribute('data-secret'),
+        user: box.getAttribute('data-user')
+    };
+}
+
+// زر التعديل المباشر
+function directEditSelectedServer() {
+    activeServerState = getSelectedServer();
+    if (!activeServerState) return;
+    openEditModalFromState();
+}
+
+// فتح نافذة الخيارات
+function openOptionsModalForChecked() {
+    activeServerState = getSelectedServer();
+    if (!activeServerState) return;
+    
+    document.getElementById('modalServerName').textContent = activeServerState.name;
+    document.getElementById('optionsModal').classList.remove('hidden');
+}
+
+function closeOptionsModal() {
+    document.getElementById('optionsModal').classList.add('hidden');
+}
+
+// تعبئة نموذج التعديل من الذاكرة
+function openEditModalFromState() {
+    document.getElementById('edit_name').value = activeServerState.name;
+    document.getElementById('edit_nas_id').value = activeServerState.nas_id;
+    document.getElementById('edit_ip_address').value = activeServerState.ip;
+    document.getElementById('edit_api_port').value = activeServerState.api_port;
+    document.getElementById('edit_coa_port').value = activeServerState.coa_port;
+    document.getElementById('edit_radius_secret').value = activeServerState.secret;
+    document.getElementById('edit_api_user').value = activeServerState.user;
+    document.getElementById('edit_api_password').value = ''; 
+    document.getElementById('editServerModal').classList.remove('hidden');
+}
+
+// معالجة الأوامر المركزية بناءً على السيرفر النشط في الذاكرة
+async function executeServerAction(actionType) {
+    if (!activeServerState || !activeServerState.id) {
+        alert('يرجى تحديد السيرفر مجدداً.');
+        return;
+    }
+    
+    const serverId = activeServerState.id;
+    closeOptionsModal();
+    
+    if (actionType === 'edit_form') {
+        openEditModalFromState();
+        return;
+    }
+    
+    if (actionType === 'reboot') {
+        if(!confirm('تحذير: سيتم إرسال أمر إعادة تشغيل لجهاز المايكروتيك. هل أنت متأكد؟')) return;
+        try {
+            const response = await fetch(`/admin/servers/reboot/${serverId}`, { method: 'POST' });
+            const result = await response.json();
+            alert(result.message);
+        } catch (err) {
+            alert('حدث خطأ أثناء إرسال أمر إعادة التشغيل.');
+        }
+        return;
+    }
+
+    if (actionType === 'reinstall') {
+        try {
+            const response = await fetch(`/admin/servers/reinstall/${serverId}`, { method: 'POST' });
+            const result = await response.json();
+            if(result.success) {
+                document.getElementById('scriptContentBox').value = result.script;
+                document.getElementById('scriptModal').classList.remove('hidden');
+            } else {
+                alert(result.message);
+            }
+        } catch (err) {
+            alert('حدث خطأ أثناء توليد الكود.');
+        }
+        return;
+    }
+    
+    if (actionType === 'delete_with_subs') {
+        // حماية الحذف الصارمة: يجب كتابة كلمة "حذف"
+        const confirmWord = prompt("تنبيه أمني خطير: حذف السيرفر سيلغي ارتباط المشتركين به. لتأكيد الحذف اكتب كلمة 'حذف':");
+        if (confirmWord !== "حذف") {
+            alert("تم إلغاء عملية الحذف لعدم تطابق الكلمة التأكيدية.");
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/admin/servers/delete/${serverId}`, { method: 'DELETE' });
+            const result = await response.json();
+            alert(result.message);
+            if(result.success) window.location.reload();
+        } catch (err) {
+            alert('حدث خطأ أثناء تنفيذ الحذف.');
+        }
+        return;
+    }
+}
+
+// المزامنة اللحظية مع المايكروتيك
+async function syncSelectedServer() {
+    activeServerState = getSelectedServer();
+    if (!activeServerState) return;
+    
+    alert(`جاري الاتصال بالسيرفر [${activeServerState.name}] ومزامنة البيانات...`);
+    try {
+        const response = await fetch(`/admin/servers/sync/${activeServerState.id}`, { method: 'POST' });
+        const result = await response.json();
+        alert(result.message);
+        window.location.reload();
+    } catch (err) {
+        alert('خطأ في الاتصال بالشبكة أثناء المزامنة.');
+    }
+}
+
+// دالة البحث في الجدول
+function searchTable() {
+    const input = document.getElementById('tableSearch');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('#serverTableBody .server-row');
+    
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? "" : "none";
+    });
+}
+
+// إرسال فورم التعديل للباك إند
+document.getElementById('editServerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeServerState || !activeServerState.id) return;
+    
+    const statusMsg = document.getElementById('editStatusMessage');
+    statusMsg.classList.add('hidden');
+    
+    const data = {
+        name: document.getElementById('edit_name').value,
+        nas_id: document.getElementById('edit_nas_id').value,
+        ip_address: document.getElementById('edit_ip_address').value,
+        api_port: document.getElementById('edit_api_port').value,
+        coa_port: document.getElementById('edit_coa_port').value,
+        radius_secret: document.getElementById('edit_radius_secret').value,
+        api_user: document.getElementById('edit_api_user').value,
+        api_password: document.getElementById('edit_api_password').value
+    };
+
+    try {
+        const response = await fetch(`/admin/servers/edit/${activeServerState.id}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        statusMsg.classList.remove('hidden', 'bg-red-900/50', 'text-red-400', 'bg-green-900/50', 'text-green-400');
+        
+        if(result.success) {
+            statusMsg.classList.add('bg-green-900/50', 'text-green-400');
+            statusMsg.textContent = result.message;
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            statusMsg.classList.add('bg-red-900/50', 'text-red-400');
+            statusMsg.textContent = result.message;
+        }
+    } catch (err) {
+        statusMsg.classList.remove('hidden');
+        statusMsg.classList.add('bg-red-900/50', 'text-red-400');
+        statusMsg.textContent = 'خطأ في الاتصال، لم يتم حفظ التعديلات.';
+    }
+});
+
+// إرسال فورم الإضافة للباك إند
+document.getElementById('addServerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const saveBtn = document.getElementById('saveBtn');
+    const btnText = document.getElementById('btnText');
+    const statusMsg = document.getElementById('statusMessage');
+    
+    saveBtn.disabled = true;
+    saveBtn.classList.add('opacity-70');
+    btnText.textContent = 'جاري المعالجة...';
+    statusMsg.classList.add('hidden');
+    
+    const data = {
+        name: document.getElementById('name').value,
+        server_type: 'mikrotik',
+        nas_id: document.getElementById('nas_id').value,
+        ip_address: document.getElementById('ip_address').value,
+        api_port: document.getElementById('api_port').value,
+        coa_port: document.getElementById('coa_port').value,
+        radius_secret: document.getElementById('radius_secret').value,
+        api_user: document.getElementById('api_user').value,
+        api_password: document.getElementById('api_password').value,
+        bypass_check: document.getElementById('bypass_check').checked
+    };
+
+    try {
+        const response = await fetch('/admin/servers/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        statusMsg.classList.remove('hidden', 'bg-red-900/50', 'text-red-400', 'bg-green-900/50', 'text-green-400');
+        
+        if(result.success) {
+            statusMsg.classList.add('bg-green-900/50', 'text-green-400');
+            statusMsg.textContent = result.message;
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            statusMsg.classList.add('bg-red-900/50', 'text-red-400');
+            statusMsg.textContent = result.message;
+        }
+    } catch (err) {
+        statusMsg.classList.remove('hidden');
+        statusMsg.classList.add('bg-red-900/50', 'text-red-400');
+        statusMsg.textContent = 'خطأ في الشبكة، لم يتم الحفظ.';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-70');
+        btnText.textContent = 'حفظ السيرفر';
+    }
+});
+</script>
+{% endblock %}

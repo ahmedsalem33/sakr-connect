@@ -1,0 +1,889 @@
+{% extends "layout.html" %}
+{% block title %}إدارة وتوليد كروت الهوت سبوت{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .live-card { 
+        width: 250px; height: 140px; background-color: #ffffff; background-size: cover; background-position: center; 
+        position: relative; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+        overflow: hidden; font-family: 'Cairo', sans-serif; margin: 0 auto;
+    }
+    
+    .draggable-item { 
+        position: absolute; cursor: move; color: #000; font-weight: bold; 
+        background: rgba(255,255,255,0.85); padding: 2px 5px; border-radius: 3px; 
+        border: 1px dashed #3b82f6; user-select: none; line-height: 1.2;
+    }
+    .draggable-item:hover { border-color: #ef4444; background: #fff; z-index: 10; }
+    #preview-qr { width: 50px; height: 50px; background: #fff; padding: 2px; }
+    #preview-logo img { max-width: 40px; max-height: 40px; object-fit: contain; pointer-events: none; }
+
+    #printArea { display: none; }
+    @media print {
+        body * { visibility: hidden; }
+        #printArea, #printArea * { visibility: visible; }
+        #printArea { 
+            display: flex; flex-wrap: wrap; position: absolute; left: 0; top: 0; 
+            width: 100%; justify-content: center; align-content: flex-start; 
+            padding: 10px; gap: 5px;
+        }
+        .page-break { page-break-after: always; width: 100%; height: 0; }
+        .printed-card { 
+            position: relative; border: 1px dashed #999; background-size: cover; 
+            background-position: center; page-break-inside: avoid; overflow: hidden; box-sizing: border-box;
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+        }
+        .printed-item { position: absolute; color: #000; font-weight: bold; font-family: 'Cairo', sans-serif; line-height: 1.2; }
+        .printed-item img.logo-print { max-width: 40px; max-height: 40px; object-fit: contain; }
+        .print-qr { width: 45px; height: 45px; }
+    }
+
+    .print-layout-4x8 .printed-card { width: 230px; height: 125px; }
+    .print-layout-5x8 .printed-card { width: 184px; height: 125px; }
+    .print-layout-4x7 .printed-card { width: 230px; height: 142px; }
+    .print-layout-3x7 .printed-card { width: 306px; height: 142px; }
+
+    .thermal-58mm .printed-card { width: 58mm; height: auto; }
+    .thermal-80mm .printed-card { width: 80mm; height: auto; }
+
+    .template-select { min-width: 200px; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 0.5; }
+    .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+</style>
+
+<div class="space-y-4 max-w-full mx-auto" dir="rtl">
+
+    <div class="flex gap-2 border-b border-slate-700 pb-3 flex-wrap">
+        <button class="tab-btn active bg-blue-600 text-white px-5 py-2 rounded text-sm font-bold shadow-md transition" onclick="switchTab('generateTab', this)">⚡ توليد الكروت</button>
+        <button class="tab-btn bg-slate-800 text-slate-400 hover:text-white px-5 py-2 rounded text-sm font-bold transition" onclick="switchTab('designTab', this)">🎨 استوديو التصميم والطباعة</button>
+        <button class="tab-btn bg-slate-800 text-slate-400 hover:text-white px-5 py-2 rounded text-sm font-bold transition" onclick="switchTab('batchesTab', this)">📦 الحزم والكروت</button>
+        <button class="tab-btn bg-slate-800 text-slate-400 hover:text-white px-5 py-2 rounded text-sm font-bold transition" onclick="switchTab('xrayTab', this)">🔍 X-Ray فحص</button>
+    </div>
+
+    <div id="generateTab" class="tab-content active space-y-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-lg space-y-4">
+            <div class="border-b border-slate-700 pb-2">
+                <h3 class="font-bold text-amber-400 text-sm">⚙️ إعدادات التوليد</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">السيرفر (الراوتر)</label>
+                    <select id="genRouter" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        {% for r in routers %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">نوع الدخول</label>
+                    <select id="genLoginType" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        <option value="user_pass">يوزر + باسورد</option>
+                        <option value="user_pass_same">يوزر = باسورد</option>
+                        <option value="pin_only">PIN فقط</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">البروفايل</label>
+                    <select id="genProfile" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        <option value="default">Default</option>
+                        <option value="fast">Fast (100M)</option>
+                        <option value="medium">Medium (50M)</option>
+                        <option value="slow">Slow (10M)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">تحديد السرعة (Rate Limit)</label>
+                    <input type="text" id="genRateLimit" placeholder="مثال: 10M/10M" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">بادئة اليوزر (Username Prefix)</label>
+                    <input type="text" id="genUserPrefix" placeholder="مثال: SAKR" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">طول اليوزر</label>
+                    <input type="number" id="genUserLength" value="8" min="4" max="20" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">طول الباسورد</label>
+                    <input type="number" id="genPassLength" value="8" min="4" max="20" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">حروف للباسورد</label>
+                    <select id="genUseLettersPass" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        <option value="true">حروف + أرقام</option>
+                        <option value="false">أرقام فقط</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">السعر (ج.م)</label>
+                    <input type="number" id="genPrice" value="10" min="0" step="0.5" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">المدة (دقائق)</label>
+                    <input type="number" id="genDuration" value="1440" min="0" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">الكوتا (MB) - 0 = غير محدود</label>
+                    <input type="number" id="genQuota" value="0" min="0" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">الكمية</label>
+                    <input type="number" id="genCount" value="50" min="1" max="1000" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">دومين الشبكة (للـ QR)</label>
+                    <input type="text" id="genDomain" placeholder="example.com" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">تخطيط الطباعة (لكل وجه A4)</label>
+                    <select id="genLayout" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        <option value="4x8">4×8 (32 كارت)</option>
+                        <option value="5x8">5×8 (40 كارت)</option>
+                        <option value="4x7">4×7 (28 كارت)</option>
+                        <option value="3x7">3×7 (21 كارت)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">طابعة حرارية</label>
+                    <select id="genThermal" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-white">
+                        <option value="">بدون (A4)</option>
+                        <option value="58mm">58 مم (عمولة 5%)</option>
+                        <option value="80mm">80 مم (عمولة 5%)</option>
+                    </select>
+                </div>
+                <div class="flex items-end gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-bold bg-slate-900 px-3 py-1.5 rounded border border-slate-600">
+                        <input type="checkbox" id="genSmartQR" checked> QR ذكي
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-bold bg-slate-900 px-3 py-1.5 rounded border border-slate-600">
+                        <input type="checkbox" id="genAutoRSC" checked> تصدير RSC
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button onclick="generateCards()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded text-sm transition shadow-md">
+                    ⚡ توليد الحزمة
+                </button>
+                <button onclick="quickCafeVoucher()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded text-sm transition shadow-md">
+                    ☕ كارت كافيه سريع
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="designTab" class="tab-content space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-4 bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-lg space-y-4 text-xs">
+                <div class="border-b border-slate-700 pb-2">
+                    <h3 class="font-bold text-amber-400">🎨 إعدادات التصميم والطباعة</h3>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">الحزمة المراد طباعتها</label>
+                    <select id="printBatch" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white" onchange="onBatchSelect()">
+                        <option value="">-- اختر حزمة --</option>
+                        {% for b in batches %}
+                        <option value="{{ b.id }}">#{{ b.id }} - {{ b.price }} ج.م - {{ b.count }} كارت</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">اسم الشبكة</label>
+                    <input type="text" id="netNameInput" placeholder="اسم الشبكة" oninput="updatePreviewNetName()" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white">
+                </div>
+
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[10px] text-slate-400 mb-1">صورة الخلفية</label>
+                        <input type="file" accept="image/*" onchange="loadBg(this)" class="w-full text-[10px] text-slate-400 file:bg-slate-700 file:border-0 file:text-white file:px-2 file:py-1 file:rounded cursor-pointer">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] text-slate-400 mb-1">الشعار (Logo)</label>
+                        <input type="file" accept="image/*" onchange="loadLogo(this)" class="w-full text-[10px] text-slate-400 file:bg-slate-700 file:border-0 file:text-white file:px-2 file:py-1 file:rounded cursor-pointer">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">تخطيط الطباعة (لكل وجه A4)</label>
+                    <select id="printLayout" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white">
+                        <option value="4x8">4×8 (32 كارت)</option>
+                        <option value="5x8">5×8 (40 كارت)</option>
+                        <option value="4x7">4×7 (28 كارت)</option>
+                        <option value="3x7">3×7 (21 كارت)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">طابعة حرارية</label>
+                    <select id="printThermal" class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white" onchange="updateThermalCommission()">
+                        <option value="">بدون (A4 عادي)</option>
+                        <option value="58mm">58 مم (عمولة 5%)</option>
+                        <option value="80mm">80 مم (عمولة 5%)</option>
+                    </select>
+                    <div id="thermalCommission" class="mt-1 text-[10px] text-emerald-400 font-bold hidden"></div>
+                </div>
+
+                <div class="space-y-1.5 bg-slate-900 p-2 rounded border border-slate-700 font-bold">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-code', this.checked)"> إظهار اليوزر</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="togglePassPreview" checked onchange="togglePreview('preview-pass', this.checked)"> إظهار الباسورد</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-qr', this.checked)"> إظهار QR</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-price', this.checked)"> إظهار السعر</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-netname', this.checked)"> إظهار اسم الشبكة</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-logo', this.checked)"> إظهار الشعار</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-duration', this.checked)"> إظهار المدة</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked onchange="togglePreview('preview-quota', this.checked)"> إظهار الكوتا</label>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">اسم القالب للحفظ</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="templateNameInput" placeholder="اسم القالب" class="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white text-xs">
+                        <button onclick="savePrintTemplate()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded text-[10px] font-bold transition">💾 حفظ</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">تحميل قالب محفوظ</label>
+                    <div class="flex gap-2">
+                        <select id="templateSelect" class="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-white text-xs">
+                            <option value="">-- اختر قالب --</option>
+                        </select>
+                        <button onclick="loadPrintTemplate()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-[10px] font-bold transition">📂 تحميل</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <button onclick="generatePrintHtml()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded transition shadow-md text-sm flex items-center justify-center gap-2">
+                        🖨️ فتح الطباعة
+                    </button>
+                    <button onclick="thermalPrint()" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded transition shadow-md text-sm flex items-center justify-center gap-2">
+                        🧾 طباعة حرارية
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 bg-slate-900 border border-slate-700 rounded-lg p-6 shadow-inner flex flex-col items-center justify-center relative min-h-[350px]">
+                <span class="absolute top-2 right-3 text-[10px] text-slate-500 font-bold">اسحب العناصر لترتيب الكارت</span>
+                <div class="live-card" id="liveCard">
+                    <div class="draggable-item" id="preview-netname" style="top:10px; left:10px; font-size:12px; color:#fff; background:rgba(0,0,0,0.5); border:none;">اسم الشبكة</div>
+                    <div class="draggable-item" id="preview-price" style="top:10px; right:10px; font-size:14px;">10 ج.م</div>
+                    <div class="draggable-item" id="preview-code" style="top:35px; left:80px; font-size:14px;">User: SAKR1234</div>
+                    <div class="draggable-item" id="preview-pass" style="top:60px; left:80px; font-size:14px;">Pass: 12345678</div>
+                    <div class="draggable-item" id="preview-duration" style="bottom:10px; left:10px; font-size:11px;">1440 دقيقة</div>
+                    <div class="draggable-item" id="preview-quota" style="bottom:10px; right:10px; font-size:11px;">غير محدود</div>
+                    <div class="draggable-item" id="preview-logo" style="bottom:55px; right:10px; background:transparent; border:none; padding:0;">
+                        <img src="" id="logoImg" style="display:none;">
+                    </div>
+                    <div class="draggable-item" id="preview-qr" style="top:65px; left:10px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="batchesTab" class="tab-content space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center shadow-lg">
+                <span class="block text-[10px] text-slate-400 font-bold">إجمالي الكروت المولدة</span>
+                <span class="block text-2xl font-black text-white font-mono mt-1">{{ stats.generated }}</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center shadow-lg">
+                <span class="block text-[10px] text-slate-400 font-bold">كروت متاحة (غير مستخدمة)</span>
+                <span class="block text-2xl font-black text-emerald-400 font-mono mt-1">{{ stats.unused }}</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center shadow-lg">
+                <span class="block text-[10px] text-slate-400 font-bold">كروت مستخدمة/مباعة</span>
+                <span class="block text-2xl font-black text-amber-400 font-mono mt-1">{{ stats.used }}</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center shadow-lg">
+                <span class="block text-[10px] text-slate-400 font-bold">إجمالي الحزم</span>
+                <span class="block text-2xl font-black text-blue-400 font-mono mt-1">{{ batches|length }}</span>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-slate-900 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-xs font-bold text-slate-300">📦 سجل الحزم (Batches)</h3>
+                <input type="text" id="batchSearch" placeholder="بحث في الحزم..." oninput="filterBatches()" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white w-48">
+            </div>
+            <div class="overflow-x-auto custom-scroll">
+                <table class="w-full text-center text-[11px] whitespace-nowrap">
+                    <thead class="bg-slate-800 text-slate-400 border-b border-slate-700">
+                        <tr>
+                            <th class="p-2 font-bold w-12">ID</th>
+                            <th class="p-2 font-bold">النوع</th>
+                            <th class="p-2 font-bold">السعر</th>
+                            <th class="p-2 font-bold">الكمية</th>
+                            <th class="p-2 font-bold">السيرفر</th>
+                            <th class="p-2 font-bold">التاريخ</th>
+                            <th class="p-2 font-bold text-left" colspan="2">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchesTbody" class="divide-y divide-slate-700/50 text-slate-300">
+                        {% for b in batches %}
+                        <tr class="hover:bg-slate-700/30 batch-row" data-id="{{ b.id }}" data-name="{{ b.name }}">
+                            <td class="p-2 text-slate-400 font-mono">#{{ b.id }}</td>
+                            <td class="p-2">{{ 'يوزر/باس' if b.login_type == 'user_pass' else 'PIN' }}</td>
+                            <td class="p-2 font-bold text-amber-400">{{ b.price }} ج.م</td>
+                            <td class="p-2 text-blue-400 font-bold">{{ b.count }}</td>
+                            <td class="p-2">{{ b.router.name if b.router else 'غير محدد' }}</td>
+                            <td class="p-2 text-slate-500 text-[10px]">{{ b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at else '---' }}</td>
+                            <td class="p-2 text-left">
+                                <div class="flex items-center gap-1">
+                                    <button onclick="loadBatchToPrint({{ b.id }})" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-[10px] transition" title="إرسال لاستوديو الطباعة">🖨️</button>
+                                    <button onclick="downloadRSC({{ b.id }})" class="bg-rose-600 hover:bg-rose-500 text-white px-2 py-1 rounded text-[10px] transition" title="تحميل RSC">.rsc</button>
+                                    <button onclick="downloadTXT({{ b.id }})" class="bg-slate-600 hover:bg-slate-500 text-white px-2 py-1 rounded text-[10px] transition" title="تحميل TXT">.txt</button>
+                                    <button onclick="downloadCSV({{ b.id }})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] transition" title="تحميل CSV">.csv</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-slate-900 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-xs font-bold text-slate-300">🎟️ الكروت الفردية (آخر 500)</h3>
+                <input type="text" id="voucherSearch" placeholder="بحث برقم الكارت..." oninput="filterVouchers()" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white w-48">
+            </div>
+            <div class="overflow-x-auto custom-scroll max-h-96">
+                <table class="w-full text-center text-[11px] whitespace-nowrap">
+                    <thead class="bg-slate-800 text-slate-400 border-b border-slate-700 sticky top-0">
+                        <tr>
+                            <th class="p-2 font-bold">ID</th>
+                            <th class="p-2 font-bold">اليوزر</th>
+                            <th class="p-2 font-bold">الباسورد</th>
+                            <th class="p-2 font-bold">السعر</th>
+                            <th class="p-2 font-bold">المدة</th>
+                            <th class="p-2 font-bold">الحالة</th>
+                            <th class="p-2 font-bold">التحكم</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vouchersTbody" class="divide-y divide-slate-700/50 text-slate-300">
+                        {% for v in vouchers %}
+                        <tr class="hover:bg-slate-700/30 voucher-row" data-username="{{ v.username }}">
+                            <td class="p-2 text-slate-400 font-mono">{{ v.id }}</td>
+                            <td class="p-2 font-mono text-emerald-400 font-bold">{{ v.username }}</td>
+                            <td class="p-2 font-mono">{{ v.password if v.password else '---' }}</td>
+                            <td class="p-2 font-bold">{{ v.price }} ج.م</td>
+                            <td class="p-2 text-[10px]">{{ v.duration_minutes }} دقيقة</td>
+                            <td class="p-2">
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold 
+                                    {% if v.status == 'unused' %}bg-emerald-900/50 text-emerald-400
+                                    {% elif v.status == 'sold' %}bg-blue-900/50 text-blue-400
+                                    {% elif v.status == 'active' %}bg-purple-900/50 text-purple-400
+                                    {% elif v.status == 'expired' %}bg-amber-900/50 text-amber-400
+                                    {% elif v.status == 'suspended' %}bg-rose-900/50 text-rose-400
+                                    {% else %}bg-slate-800 text-slate-400{% endif %}">
+                                    {{ {'unused':'متاح','sold':'مباع','active':'نشط','expired':'منتهي','suspended':'موقوف'}.get(v.status, v.status) }}
+                                </span>
+                            </td>
+                            <td class="p-2">
+                                <div class="flex items-center gap-1 justify-center">
+                                    <button onclick="voucherAction({{ v.id }},'reset')" class="bg-emerald-700 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[9px] transition">إعادة</button>
+                                    <button onclick="voucherAction({{ v.id }},'suspend')" class="bg-amber-700 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded text-[9px] transition">إيقاف</button>
+                                    <button onclick="voucherAction({{ v.id }},'clear_mac')" class="bg-blue-700 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px] transition">مسح MAC</button>
+                                    <button onclick="voucherAction({{ v.id }},'delete')" class="bg-rose-700 hover:bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] transition">حذف</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="xrayTab" class="tab-content space-y-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-lg">
+            <h3 class="text-sm font-black text-amber-400 mb-3">🔍 فحص PIN (X-Ray)</h3>
+            <div class="flex gap-2">
+                <input type="text" id="xrayPin" placeholder="أدخل رقم PIN أو اليوزر للفحص..." class="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white font-mono">
+                <button onclick="checkPin()" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded text-sm font-bold transition">🔍 فحص</button>
+            </div>
+            <div id="xrayResult" class="mt-3 hidden"></div>
+        </div>
+    </div>
+
+</div>
+
+<div id="printArea"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeBatchCards = [];
+let currentBgImage = "";
+let currentLogoImage = "";
+let demoQr = new QRCode(document.getElementById("preview-qr"), { text: "demo", width: 50, height: 50 });
+
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active', 'bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-800', 'text-slate-400');
+    });
+    document.getElementById(tabId).classList.add('active');
+    if (btn) {
+        btn.classList.remove('bg-slate-800', 'text-slate-400');
+        btn.classList.add('active', 'bg-blue-600', 'text-white');
+    }
+}
+
+function generateCards() {
+    const data = {
+        action: 'generate',
+        router_id: document.getElementById('genRouter').value,
+        count: parseInt(document.getElementById('genCount').value),
+        price: parseFloat(document.getElementById('genPrice').value),
+        duration_minutes: parseInt(document.getElementById('genDuration').value),
+        quota_mb: parseInt(document.getElementById('genQuota').value),
+        login_type: document.getElementById('genLoginType').value,
+        username_prefix: document.getElementById('genUserPrefix').value,
+        username_length: parseInt(document.getElementById('genUserLength').value),
+        password_length: parseInt(document.getElementById('genPassLength').value),
+        use_letters_pass: document.getElementById('genUseLettersPass').value === 'true',
+        profile: document.getElementById('genProfile').value,
+        rate_limit: document.getElementById('genRateLimit').value,
+        network_domain: document.getElementById('genDomain').value,
+        print_layout: document.getElementById('genLayout').value,
+        thermal_printer: document.getElementById('genThermal').value || null,
+    };
+
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            alert(res.message);
+            if (confirm('🖨️ هل تريد الطباعة الآن؟')) {
+                window.location.reload();
+            } else {
+                window.location.reload();
+            }
+        } else {
+            alert('❌ ' + res.message);
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال بالسيرفر'));
+}
+
+function quickCafeVoucher() {
+    const routerId = document.getElementById('genRouter').value;
+    const price = parseFloat(document.getElementById('genPrice').value) || 10;
+    const duration = parseInt(document.getElementById('genDuration').value) || 1440;
+    const quota = parseInt(document.getElementById('genQuota').value) || 0;
+    const thermal = document.getElementById('genThermal').value || null;
+
+    const plan = {
+        price: price,
+        duration_minutes: duration,
+        quota_mb: quota,
+        rate_limit: document.getElementById('genRateLimit').value || '',
+        prefix: 'CAFE',
+        length: 6,
+        print_layout: document.getElementById('genLayout').value,
+        thermal_printer: thermal
+    };
+
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'quick_cafe_voucher', router_id: parseInt(routerId), plan: plan, thermal_printer: thermal })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            const v = res.voucher;
+            alert(`✅ تم توليد كارت الكافيه:\nUser: ${v.username}\nPass: ${v.password}\nالسعر: ${plan.price} ج.م${res.commission ? '\nعمولة حرارية: ' + res.commission + ' ج.م' : ''}`);
+        } else {
+            alert('❌ ' + res.message);
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function checkPin() {
+    const pin = document.getElementById('xrayPin').value.trim();
+    if (!pin) return alert('أدخل PIN للفحص');
+
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check_pin', pin: pin })
+    })
+    .then(r => r.json())
+    .then(res => {
+        const el = document.getElementById('xrayResult');
+        el.classList.remove('hidden');
+        if (res.status === 'success') {
+            const d = res.data;
+            el.innerHTML = `
+                <div class="bg-slate-900 border border-slate-600 rounded p-3 space-y-1 text-xs">
+                    <div class="flex justify-between"><span class="text-slate-400">PIN:</span><span class="text-emerald-400 font-mono font-bold">${d.pin}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">الحالة:</span><span class="text-amber-400 font-bold">${d.status}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">السيرفر:</span><span>${d.router}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">السعر:</span><span class="font-bold">${d.price}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">الباقة:</span><span>${d.package}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">الكوتا:</span><span>${d.quota}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">MAC:</span><span class="font-mono text-[9px]">${d.mac}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">أول دخول:</span><span>${d.first_login}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">الصلاحية:</span><span>${d.expiry}</span></div>
+                </div>
+            `;
+        } else {
+            el.innerHTML = `<div class="bg-rose-900/50 border border-rose-700/50 rounded p-2 text-xs text-rose-300">${res.message}</div>`;
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function voucherAction(id, action) {
+    if (!confirm(`تأكيد إجراء "${action}" للكارت #${id}؟`)) return;
+
+    fetch('/api/voucher/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, action: action })
+    })
+    .then(r => r.json())
+    .then(res => {
+        alert(res.message);
+        if (res.status === 'success') window.location.reload();
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function loadBatchToPrint(batchId) {
+    document.getElementById('printBatch').value = batchId;
+    switchTab('designTab', document.querySelectorAll('.tab-btn')[1]);
+    setTimeout(() => onBatchSelect(), 300);
+}
+
+function onBatchSelect() {
+    const batchId = document.getElementById('printBatch').value;
+    if (!batchId) return;
+
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check_pin', pin: '__batch__' })
+    })
+    .catch(() => {});
+
+    updateThermalCommission();
+}
+
+function updateThermalCommission() {
+    const thermal = document.getElementById('printThermal').value;
+    const el = document.getElementById('thermalCommission');
+    if (thermal) {
+        el.classList.remove('hidden');
+        el.innerHTML = `⚡ عمولة الطابعة الحرارية: 5%`;
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+function generatePrintHtml() {
+    const batchId = document.getElementById('printBatch').value;
+    if (!batchId) return alert('اختر حزمة أولاً');
+
+    const layout = document.getElementById('printLayout').value;
+    const thermal = document.getElementById('printThermal').value || null;
+
+    const settings = {
+        show_username: document.getElementById('preview-code').style.display !== 'none',
+        show_password: document.getElementById('preview-pass').style.display !== 'none',
+        show_price: document.getElementById('preview-price').style.display !== 'none',
+        show_duration: document.getElementById('preview-duration').style.display !== 'none',
+        show_quota: document.getElementById('preview-quota').style.display !== 'none',
+        show_qr: document.getElementById('preview-qr').style.display !== 'none',
+        show_network_name: document.getElementById('preview-netname').style.display !== 'none',
+        background_image: currentBgImage,
+        network_name: document.getElementById('netNameInput').value || 'Sakr Connect',
+    };
+
+    fetch('/api/generate_print_html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch_id: parseInt(batchId), layout: layout, thermal_printer: thermal, settings: settings })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            const printArea = document.getElementById('printArea');
+            printArea.innerHTML = res.html;
+            printArea.style.display = 'block';
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => { printArea.style.display = 'none'; }, 500);
+            }, 1000);
+        } else {
+            alert('❌ ' + res.message);
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function thermalPrint() {
+    const batchId = document.getElementById('printBatch').value;
+    const thermal = document.getElementById('printThermal').value;
+    if (!batchId) return alert('اختر حزمة أولاً');
+    if (!thermal) return alert('اختر نوع الطابعة الحرارية');
+
+    const voucherId = parseInt(prompt('أدخل رقم ID الكارت للطباعة الحرارية:', ''));
+    if (!voucherId) return;
+
+    fetch('/api/thermal_print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voucher_id: voucherId, printer_type: thermal })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            alert(`✅ محتوى الطباعة الحرارية جاهز\nالعمولة: ${res.commission} ج.م`);
+            if (confirm('عرض محتوى الطباعة؟')) {
+                alert(res.content);
+            }
+        } else {
+            alert('❌ ' + res.message);
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function savePrintTemplate() {
+    const name = document.getElementById('templateNameInput').value.trim();
+    if (!name) return alert('أدخل اسم للقالب');
+
+    const template = {
+        network_name: document.getElementById('netNameInput').value,
+        layout: document.getElementById('printLayout').value,
+        thermal: document.getElementById('printThermal').value,
+        bg_image: currentBgImage,
+        logo: currentLogoImage,
+        elements: {
+            code: { display: document.getElementById('preview-code').style.display, top: document.getElementById('preview-code').style.top, left: document.getElementById('preview-code').style.left },
+            pass: { display: document.getElementById('preview-pass').style.display, top: document.getElementById('preview-pass').style.top, left: document.getElementById('preview-pass').style.left },
+            price: { display: document.getElementById('preview-price').style.display, top: document.getElementById('preview-price').style.top, left: document.getElementById('preview-price').style.left },
+            netname: { display: document.getElementById('preview-netname').style.display, top: document.getElementById('preview-netname').style.top, left: document.getElementById('preview-netname').style.left },
+            logo: { display: document.getElementById('preview-logo').style.display, top: document.getElementById('preview-logo').style.top, left: document.getElementById('preview-logo').style.left },
+            qr: { display: document.getElementById('preview-qr').style.display, top: document.getElementById('preview-qr').style.top, left: document.getElementById('preview-qr').style.left },
+            duration: { display: document.getElementById('preview-duration').style.display, top: document.getElementById('preview-duration').style.top, left: document.getElementById('preview-duration').style.left },
+            quota: { display: document.getElementById('preview-quota').style.display, top: document.getElementById('preview-quota').style.top, left: document.getElementById('preview-quota').style.left },
+        }
+    };
+
+    fetch('/api/print_template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', network_id: {{ session.get('network_id', 1) }}, template: { name: name, data: template } })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            alert('✅ تم حفظ القالب');
+            loadTemplateList();
+        } else {
+            alert('❌ ' + res.message);
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function loadPrintTemplate() {
+    const sel = document.getElementById('templateSelect');
+    const name = sel.value;
+    if (!name) return alert('اختر قالباً للتحميل');
+
+    fetch('/api/print_template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'load', network_id: {{ session.get('network_id', 1) }} })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success' && res.template) {
+            const templates = res.template;
+            const t = templates[name];
+            if (!t || !t.data) return alert('القالب غير موجود');
+            const data = t.data;
+            if (data.network_name) document.getElementById('netNameInput').value = data.network_name;
+            if (data.layout) document.getElementById('printLayout').value = data.layout;
+            if (data.thermal) document.getElementById('printThermal').value = data.thermal;
+
+            if (data.bg_image) {
+                currentBgImage = data.bg_image;
+                document.getElementById('liveCard').style.backgroundImage = `url(${currentBgImage})`;
+            }
+            if (data.logo) {
+                currentLogoImage = data.logo;
+                const img = document.getElementById('logoImg');
+                img.src = currentLogoImage;
+                img.style.display = 'block';
+            }
+            if (data.elements) {
+                for (const [key, el] of Object.entries(data.elements)) {
+                    const domEl = document.getElementById('preview-' + key);
+                    if (domEl) {
+                        domEl.style.display = el.display || 'block';
+                        domEl.style.top = el.top || domEl.style.top;
+                        domEl.style.left = el.left || domEl.style.left;
+                    }
+                }
+            }
+            alert('✅ تم تحميل القالب');
+        } else {
+            alert('❌ لا توجد قوالب محفوظة');
+        }
+    })
+    .catch(() => alert('❌ فشل الاتصال'));
+}
+
+function loadTemplateList() {
+    fetch('/api/print_template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'load', network_id: {{ session.get('network_id', 1) }} })
+    })
+    .then(r => r.json())
+    .then(res => {
+        const sel = document.getElementById('templateSelect');
+        sel.innerHTML = '<option value="">-- اختر قالب --</option>';
+        if (res.status === 'success' && res.template) {
+            for (const name of Object.keys(res.template)) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                sel.appendChild(opt);
+            }
+        }
+    })
+    .catch(() => {});
+}
+
+function downloadRSC(batchId) {
+    window.location.href = '/download/rsc/' + batchId;
+}
+
+function downloadTXT(batchId) {
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate_print_html', batch_id: batchId, layout: '4x8' })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success') {
+            const txt = res.html.replace(/<[^>]*>/g, '').replace(/\\s+/g, ' ').trim();
+            saveAs(new Blob([txt], {type: 'text/plain;charset=utf-8'}), `batch_${batchId}.txt`);
+        }
+    });
+}
+
+function downloadCSV(batchId) {
+    fetch('/manage/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate_print_html', batch_id: batchId, layout: '4x8' })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'success' && res.count) {
+            const csv = `BatchID,Count\n${batchId},${res.count}\n`;
+            saveAs(new Blob([csv], {type: 'text/csv;charset=utf-8'}), `batch_${batchId}.csv`);
+        }
+    });
+}
+
+function filterBatches() {
+    const q = document.getElementById('batchSearch').value.toLowerCase();
+    document.querySelectorAll('.batch-row').forEach(r => {
+        r.style.display = r.getAttribute('data-name').toLowerCase().includes(q) || r.getAttribute('data-id').includes(q) ? '' : 'none';
+    });
+}
+
+function filterVouchers() {
+    const q = document.getElementById('voucherSearch').value.toLowerCase();
+    document.querySelectorAll('.voucher-row').forEach(r => {
+        r.style.display = r.getAttribute('data-username').toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+function loadBg(input) {
+    if (input.files && input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => { currentBgImage = e.target.result; document.getElementById('liveCard').style.backgroundImage = `url(${currentBgImage})`; };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+
+function loadLogo(input) {
+    if (input.files && input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => {
+            currentLogoImage = e.target.result;
+            const img = document.getElementById('logoImg');
+            img.src = currentLogoImage;
+            img.style.display = 'block';
+        };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+
+function updatePreviewNetName() {
+    const val = document.getElementById('netNameInput').value;
+    document.getElementById('preview-netname').innerText = val || 'اسم الشبكة';
+}
+
+function togglePreview(id, show) {
+    document.getElementById(id).style.display = show ? 'block' : 'none';
+}
+
+document.querySelectorAll('.draggable-item').forEach(item => {
+    let isDragging = false, startX, startY, initialX, initialY;
+    item.addEventListener('mousedown', e => {
+        isDragging = true; startX = e.clientX; startY = e.clientY;
+        initialX = item.offsetLeft; initialY = item.offsetTop;
+    });
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        item.style.left = `${initialX + (e.clientX - startX)}px`;
+        item.style.top = `${initialY + (e.clientY - startY)}px`;
+    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTemplateList();
+});
+</script>
+{% endblock %}

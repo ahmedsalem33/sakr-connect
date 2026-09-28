@@ -1,0 +1,14 @@
+<div class="dashboard-reseller">
+    <div class="stats-grid">
+        <div class="card"><h3>رصيدك الحالي</h3><p>{{ reseller.balance }} ج.م</p></div>
+        <div class="card"><h3>أرباح اليوم</h3><p>{{ reseller.profit_today }} ج.م</p></div>
+        <div class="card"><h3>مبيعات الشهر</h3><p>{{ reseller.sales_monthly }} ج.م</p></div>
+        <div class="card"><h3>الصافي للمورد</h3><p>{{ reseller.net_to_network }} ج.م</p></div>
+    </div>
+
+    <div class="actions">
+        <a href="/app/reseller/add_user" class="btn-action">اشتراك جديد</a>
+        <a href="/app/reseller/renew" class="btn-action">تجديد باقة</a>
+        <a href="/app/reseller/reports" class="btn-action">كشف حساب</a>
+    </div>
+</div>

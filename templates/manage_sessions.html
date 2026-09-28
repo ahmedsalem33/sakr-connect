@@ -1,0 +1,186 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col md:flex-row justify-between items-center relative overflow-hidden gap-4">
+        <div class="absolute top-0 right-0 w-2 bg-rose-500 h-full"></div>
+        <div>
+            <h2 class="text-xl font-black text-white flex items-center gap-2">
+                <span class="text-2xl animate-pulse">📡</span> الجلسات النشطة (Live Sessions)
+            </h2>
+            <p class="text-xs text-slate-400 mt-1 font-bold">مراقبة حية للمشتركين المتصلين بالسيرفرات وإدارة الجلسات الحالية.</p>
+        </div>
+        <div class="flex gap-3 w-full md:w-auto">
+            <div class="bg-[#151f32] px-4 py-2 rounded-lg border border-slate-700 text-center flex-1 md:flex-none">
+                <span class="block text-[10px] text-slate-500 font-bold">إجمالي الأونلاين</span>
+                <span class="block text-lg font-black text-blue-400">{{ stats_data.total_online }}</span>
+            </div>
+            <div class="bg-emerald-900/20 px-4 py-2 rounded-lg border border-emerald-900/50 text-center flex-1 md:flex-none">
+                <span class="block text-[10px] text-emerald-500 font-bold">منازل (PPPoE)</span>
+                <span class="block text-lg font-black text-emerald-400">{{ stats_data.pppoe_online }}</span>
+            </div>
+            <div class="bg-amber-900/20 px-4 py-2 rounded-lg border border-amber-900/50 text-center flex-1 md:flex-none">
+                <span class="block text-[10px] text-amber-500 font-bold">كافيهات (Hotspot)</span>
+                <span class="block text-lg font-black text-amber-400">{{ stats_data.hotspot_online }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col lg:flex-row gap-4 items-center justify-between">
+        <div class="flex-1 w-full relative">
+            <input type="text" id="searchInput" placeholder="ابحث باسم المستخدم، الـ IP، أو الـ MAC Address..." class="w-full bg-[#0b111e] border border-slate-700 focus:border-blue-500 rounded-lg pr-10 pl-4 py-2.5 text-sm text-white focus:outline-none transition" onkeyup="filterTable()">
+            <span class="absolute right-3 top-2.5 text-slate-500">🔍</span>
+        </div>
+        
+        <div class="flex gap-3 w-full lg:w-auto">
+            <select id="serverFilter" class="bg-[#0b111e] border border-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 transition flex-1" onchange="filterTable()">
+                <option value="all">كل السيرفرات</option>
+                {% for server in active_servers %}
+                <option value="{{ server.name }}">{{ server.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select id="serviceFilter" class="bg-[#0b111e] border border-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 transition flex-1" onchange="filterTable()">
+                <option value="all">كل الخدمات</option>
+                <option value="pppoe">PPPoE</option>
+                <option value="hotspot">Hotspot</option>
+            </select>
+
+            <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition border border-slate-700 flex items-center gap-2">
+                تحديث 🔄
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+        <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-right text-xs whitespace-nowrap" id="sessionsTable">
+                <thead class="bg-[#0b111e] text-slate-500 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4 font-bold">المشترك / MAC</th>
+                        <th class="py-3 px-4 font-bold">الخدمة والسيرفر</th>
+                        <th class="py-3 px-4 font-bold text-center">IP Address</th>
+                        <th class="py-3 px-4 font-bold text-center">مدة الجلسة (Uptime)</th>
+                        <th class="py-3 px-4 font-bold text-center">استهلاك الجلسة (Tx/Rx)</th>
+                        <th class="py-3 px-4 font-bold text-center">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/50">
+                    {% for session in live_sessions %}
+                    <tr class="hover:bg-slate-800/30 transition session-row">
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <div>
+                                    <p class="font-bold text-slate-200 session-username">{{ session.username }}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono mt-0.5 session-mac">{{ session.mac_address }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if session.service_type|lower == 'pppoe' %}
+                                <span class="session-service bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold">PPPoE</span>
+                            {% else %}
+                                <span class="session-service bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Hotspot</span>
+                            {% endif %}
+                            <p class="text-[10px] text-slate-500 mt-1 session-server">{{ session.server_name }}</p>
+                        </td>
+                        <td class="py-3 px-4 text-center font-mono text-slate-300 session-ip">{{ session.ip_address }}</td>
+                        <td class="py-3 px-4 text-center text-slate-300">{{ session.uptime }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex flex-col items-center text-[10px] font-mono">
+                                <span class="text-emerald-400" title="Download">↓ {{ session.download_gb }} GB</span>
+                                <span class="text-amber-400" title="Upload">↑ {{ session.upload_gb }} GB</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center space-x-reverse space-x-2">
+                                {% if session.client_id %}
+                                <a href="{{ url_for('subscribers.client_profile', sys_type=session.service_type_short, client_id=session.client_id) }}" title="بروفايل العميل" class="p-1.5 bg-[#151f32] border border-slate-700 hover:border-blue-500 hover:bg-slate-800 rounded-md text-blue-400 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                </a>
+                                {% endif %}
+                                
+                                <button onclick="kickSession('{{ session.username }}', '{{ session.server_id }}')" title="فصل الجلسة (Kick/Disconnect)" class="p-1.5 bg-rose-950/30 border border-rose-900/50 hover:bg-rose-900/40 rounded-md text-rose-400 transition flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                    <span class="text-[10px] font-bold">فصل</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-500 font-bold">لا توجد جلسات نشطة حالياً عبر السيرفرات المحددة.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="p-4 border-t border-slate-800 flex justify-between items-center bg-[#151f32]/50">
+            <span class="text-[11px] text-slate-500 font-bold">عرض {{ live_sessions|length }} جلسة نشطة</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // دالة الفلترة اللحظية للجدول
+    function filterTable() {
+        let searchValue = document.getElementById("searchInput").value.toLowerCase();
+        let serverFilter = document.getElementById("serverFilter").value.toLowerCase();
+        let serviceFilter = document.getElementById("serviceFilter").value.toLowerCase();
+        
+        let rows = document.querySelectorAll(".session-row");
+        
+        rows.forEach(row => {
+            let username = row.querySelector(".session-username").innerText.toLowerCase();
+            let mac = row.querySelector(".session-mac").innerText.toLowerCase();
+            let ip = row.querySelector(".session-ip").innerText.toLowerCase();
+            let server = row.querySelector(".session-server").innerText.toLowerCase();
+            let service = row.querySelector(".session-service").innerText.toLowerCase();
+            
+            let matchesSearch = username.includes(searchValue) || mac.includes(searchValue) || ip.includes(searchValue);
+            let matchesServer = (serverFilter === "all") || (server === serverFilter);
+            let matchesService = (serviceFilter === "all") || (service === serviceFilter);
+            
+            if (matchesSearch && matchesServer && matchesService) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    // دالة الطرد وإسقاط الجلسة عبر الـ API
+    function kickSession(username, serverId) {
+        if (confirm(`هل أنت متأكد من إسقاط وفصل الجلسة للعميل: ${username}؟`)) {
+            fetch('/api/sessions/kick', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    server_id: serverId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    // إعادة تحميل الصفحة لتحديث الجلسات
+                    location.reload();
+                } else {
+                    alert('❌ فشل: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ في الاتصال بالسيرفر أثناء محاولة الفصل.');
+            });
+        }
+    }
+</script>
+{% endblock %}

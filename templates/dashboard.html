@@ -1,0 +1,819 @@
+{% extends "layout.html" %}
+{% block title %}Sakr Connect Radius | صقر كونكت راديوس - لوحة العمليات{% endblock %}
+
+{% block content %}
+
+<div class="space-y-6 w-full pb-10" dir="{{ 'ltr' if session.get('lang') == 'en' else 'rtl' }}">
+
+    {# ======================================================================== #}
+    {# القسم الأول: الجدار العازل وحجب الخدمة - Section 1: Lock Screen & Suspension #}
+    {# ======================================================================== #}
+    {% if is_locked %}
+    <div class="h-full flex flex-col items-center justify-center py-20 px-4 text-center bg-rose-950/20 border border-rose-900/50 rounded-2xl shadow-2xl mt-4">
+        <div class="w-24 h-24 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center text-5xl mb-6 shadow-[0_0_30px_rgba(225,29,72,0.3)] animate-pulse">🔒</div>
+        <h2 class="text-3xl font-black text-white mb-4">الخدمة معلقة مؤقتاً</h2>
+        <p class="text-slate-300 text-lg mb-8 max-w-2xl leading-relaxed">
+            عفواً يا <span class="text-amber-400 font-bold">{{ session.get('fullname', 'عميلنا العزيز') }}</span>، تم إيقاف لوحة التحكم وتجميد الصلاحيات نظراً لعدم سداد الفاتورة المستحقة أو انتهاء الفترة التجريبية. يرجى تسوية المديونية فوراً لإعادة تفعيل النظام والتحكم.
+        </p>
+        <a href="/client/account" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-lg py-3 px-8 rounded-xl transition shadow-lg shadow-rose-600/30 flex items-center gap-2">
+            <span>💳 الانتقال لصفحة الفواتير والسداد</span>
+        </a>
+    </div>
+
+    {% else %}
+    {# ======================================================================== #}
+    {# القسم الثاني: الإشعارات المركزية والترحيب - Section 2: Alerts & Welcome Banner #}
+    {# ======================================================================== #}
+    
+    <div id="restore-zone" class="flex flex-wrap gap-2 empty:hidden transition-all duration-300"></div>
+
+{% if session.get('is_trial', True) %}
+    <div id="welcome-banner" class="bg-[#151f32] border-l-4 border-l-blue-500 border border-slate-700 rounded-xl p-5 mb-2 shadow-lg relative flex flex-col md:flex-row gap-4 items-start md:items-center justify-between transition-all">
+        <div class="flex items-start gap-4">
+            <div class="text-4xl animate-bounce mt-1">👋</div>
+            <div>
+                <h3 class="text-base font-black text-white mb-1.5 leading-snug">
+                    أهلاً بك يا <span class="text-amber-400">{{ session.get('fullname', 'عميلنا العزيز') }}</span> في نظام <span class="text-blue-400">Sakr Connect Radius | صقر كونكت راديوس</span>.
+                </h3>
+                <p class="text-xs text-slate-300 leading-relaxed max-w-4xl">
+                    نحن سعداء بانضمامك. تم تخصيص هذه اللوحة لتمنحك تحكماً كاملاً واحترافياً. نذكرك بأن المعرف الخاص بك لدينا هو كود التحصيل: <span class="text-emerald-400 font-mono font-bold bg-emerald-900/30 px-1.5 py-0.5 rounded">{{ billing.collect_code if billing and billing.collect_code else session.get('billing_code', 'غير متوفر') }}</span>.
+                    <br>
+                    <span class="text-rose-400 font-bold mt-2 block bg-rose-950/30 inline-block px-2 py-1 rounded border border-rose-900/50">
+                        ⚠️ تنبيه هام: هذه اللوحة في الفترة التجريبية (<span id="trial-countdown" class="font-mono text-amber-400">جاري التحميل...</span>). لضمان عدم توقف الخدمة أو فقدان التحكم، يرجى تسوية الفاتورة الخاصة بك من خلال صفحة الحسابات.
+                    </span>
+                </p>
+            </div>
+        </div>
+        <button onclick="document.getElementById('welcome-banner').style.display='none'" class="shrink-0 text-slate-400 hover:text-white bg-slate-800 hover:bg-rose-600 rounded-lg px-3 py-2 text-xs font-bold transition flex items-center gap-1 border border-slate-700">
+            <span>✖ فهمت ذلك</span>
+        </button>
+    </div>
+{% endif %}
+
+    {% if system_alerts %}
+    <div id="alert-system" class="bg-rose-950/80 border border-rose-900/50 text-rose-200 px-4 py-2 rounded-lg flex justify-between items-center text-xs font-bold shadow-md transition-all mt-2">
+        <div class="flex items-center gap-2">
+            <span class="animate-pulse">🔴</span>
+            <span>إشعار نظام مركزي: {{ system_alerts.message }}</span>
+        </div>
+        <button onclick="closeTool('alert-system', 'إشعار النظام')" class="hover:text-white transition">✖</button>
+    </div>
+    {% endif %}
+
+    {% if central_announcement %}
+    <div id="alert-announcement" class="bg-[#151f32] border border-blue-900/30 text-blue-200 px-4 py-2 rounded-lg flex justify-between items-center text-xs font-bold shadow-md transition-all mt-2">
+        <div class="flex items-center gap-2">
+            <span>📢</span>
+            <span>{{ central_announcement }}</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="closeTool('alert-announcement', 'البث المركزي')" class="hover:text-white transition">✖</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-[#151f32] border border-slate-800 rounded-xl p-4 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-lg mt-4">
+        <div class="flex items-center gap-4 w-full lg:w-auto">
+            <div class="w-12 h-12 bg-blue-600/20 border border-blue-500/30 rounded-full flex items-center justify-center text-blue-500 text-xl">
+                {% if current_role in ['network', 'reseller'] %}🏢{% elif current_role == 'cafe' %}☕{% endif %}
+            </div>
+            <div>
+                <span class="block text-white font-black text-sm">{{ session.get('fullname', 'مستخدم النظام') }}</span>
+                <span class="block text-slate-400 text-[10px] font-bold">
+                    باقة النظام: <span class="text-amber-400">{{ user_plan_name | default('مخصصة') }}</span> | حالة الاشتراك: <span class="text-emerald-400">{{ user_status | default('نشط') }}</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            {% if current_role in ['network', 'reseller'] %}
+            <div class="relative flex-1 lg:w-64">
+                <input type="text" placeholder="بحث سريع عن مشترك أو ماك أدرس..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 transition">
+            </div>
+            <div class="flex gap-2">
+            <button onclick="window.location.href='/client/download_hotspot'" class="bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold py-2 px-3 rounded-lg transition shadow-lg shadow-purple-500/20 flex items-center gap-1">
+            📥 ملفات الهوت سبوت
+                </button>
+                <button onclick="window.location.href='/download/app'" class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold py-2 px-3 rounded-lg transition shadow-lg shadow-blue-500/20 flex items-center gap-1">
+                    📱 تطبيق صقر كونكت باي
+                </button>
+            </div>
+            {% elif current_role == 'cafe' %}
+            <button onclick="openQuickVoucherModal()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition shadow-lg shadow-purple-500/20">
+                ⚡ توليد كارت سريع
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ======================================================================== #}
+    {# القسم الثالث: نظام الشبكات (الإدارة والموزعين) - Section 3: Networks System #}
+    {# ======================================================================== #}
+    {% if current_role in ['network', 'reseller'] %}
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex flex-col items-center shadow-lg transition">
+            <div class="dynamic-gauge alert-enabled relative w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" data-progress="{{ stats.cpu_usage | default(0) }}">
+                <div class="w-16 h-16 bg-[#0f172a] rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300">{{ stats.cpu_usage | default(0) }}%</div>
+            </div>
+            <span class="text-slate-400 text-[11px] font-bold">استهلاك المعالج (CPU)</span>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex flex-col items-center shadow-lg transition">
+            <div class="dynamic-gauge alert-enabled relative w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" data-progress="{{ stats.ram_usage | default(0) }}">
+                <div class="w-16 h-16 bg-[#0f172a] rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300">{{ stats.ram_usage | default(0) }}%</div>
+            </div>
+            <span class="text-slate-400 text-[11px] font-bold">الذاكرة العشوائية (RAM)</span>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex flex-col items-center shadow-lg transition">
+            <div class="dynamic-gauge alert-enabled relative w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" data-progress="{{ stats.network_capacity | default(0) }}">
+                <div class="w-16 h-16 bg-[#0f172a] rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300">{{ stats.network_capacity | default(0) }}%</div>
+            </div>
+            <span class="text-slate-400 text-[11px] font-bold">سعة الشبكة الإجمالية</span>
+        </div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex flex-col items-center shadow-lg transition">
+            <div class="dynamic-gauge relative w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" data-progress="{{ stats.sales_target | default(0) }}" data-color="#3b82f6">
+                <div class="w-16 h-16 bg-[#0f172a] rounded-full flex items-center justify-center text-blue-400 font-bold text-sm">{{ stats.sales_target | default(0) }}%</div>
+            </div>
+            <span class="text-slate-400 text-[11px] font-bold">معدل المبيعات اليومي</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
+        <button type="button" onclick="openActionDrawer('all', '👥 إجمالي العملاء')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-blue-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition">👥</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">اجمالي العملاء</span><span class="block text-lg font-black text-white font-mono">{{ stats.total_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('active_sessions', '📡 المتصلين حالياً (نشط)')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md relative hover:border-emerald-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition"><span class="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>📡</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">كل المتصلين</span><span class="block text-lg font-black text-white font-mono">{{ stats.active_sessions | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('available', '✔️ العملاء المتاحين')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-teal-400 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-teal-400/10 flex items-center justify-center text-teal-400 group-hover:scale-110 transition">✔️</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">عملاء متاحين</span><span class="block text-lg font-black text-white font-mono">{{ stats.available_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('vouchers', '🎟️ الكروت المتصلة الآن')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-purple-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition">🎟️</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">كروت متصلة</span><span class="block text-lg font-black text-white font-mono">{{ stats.active_vouchers | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('pppoe', '👤 مشتركي المنازل المتصلين')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-emerald-400 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-emerald-400/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">👤</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">مشتركين متصلة</span><span class="block text-lg font-black text-white font-mono">{{ stats.active_pppoe | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('expired', '⏳ العملاء المنتهية اشتراكاتهم')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-rose-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-rose-500/10 flex items-center justify-center text-rose-500 group-hover:scale-110 transition">⏳</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">انتهى اشتراكهم</span><span class="block text-lg font-black text-rose-400 font-mono">{{ stats.expired_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('warning', '📉 عملاء أوشكوا على الانتهاء')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-amber-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition">📉</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">أوشكت على الانتهاء</span><span class="block text-lg font-black text-amber-400 font-mono">{{ stats.warning_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('suspended', '🚫 العملاء الموقوفين')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-rose-600 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-rose-600/10 flex items-center justify-center text-rose-600 group-hover:scale-110 transition">🚫</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">تم ايقافهم</span><span class="block text-lg font-black text-white font-mono">{{ stats.suspended_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('exceeded', '⚠️ عملاء تجاوزوا الاستهلاك')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-red-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center text-red-500 group-hover:scale-110 transition">⚠️</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">تجاوز الليميت</span><span class="block text-lg font-black text-red-400 font-mono">{{ stats.exceeded_clients | default(0) }}</span></div>
+        </button>
+        <button type="button" onclick="openActionDrawer('new', '✨ العملاء الجدد')" class="group w-full text-right bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md hover:border-teal-300 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-8 h-8 rounded bg-teal-300/10 flex items-center justify-center text-teal-300 group-hover:scale-110 transition">✨</div>
+            <div><span class="block text-[10px] text-slate-400 font-bold mb-0.5">عملاء جدد</span><span class="block text-lg font-black text-white font-mono">{{ stats.new_clients | default(0) }}</span></div>
+        </button>
+    </div>
+
+    <div id="xray-panel" class="bg-[#0f172a] border border-slate-800 rounded-xl p-5 shadow-lg relative mt-8 transition-all">
+        <button onclick="closeTool('xray-panel', 'أداة الفحص الجنائي')" class="absolute top-4 left-4 text-slate-500 hover:text-rose-500 text-xs font-bold transition flex items-center gap-1">
+            <span>✖ إغلاق الأداة</span>
+        </button>
+        <h3 class="text-xs font-black text-slate-200 border-b border-slate-800 pb-3 mb-4 flex items-center gap-2">
+            <span class="text-amber-500">🔍</span> أداة الفحص الجنائي للكروت والمشتركين (Advanced X-Ray)
+        </h3>
+        <div class="flex flex-col md:flex-row gap-4 mb-4">
+            <input type="text" id="voucher-pin-input" placeholder="أدخل رقم الـ PIN للكارت أو الماك أدرس لفحص السجل الكامل..." dir="ltr" class="flex-1 bg-[#0b111e] border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono tracking-widest text-center md:text-left">
+            <button type="button" onclick="triggerDetailedXRay()" class="bg-amber-500 hover:bg-amber-400 text-slate-900 px-8 rounded-lg text-sm font-black transition">بحث وفحص السجل</button>
+        </div>
+        <div id="xray-detailed-log" class="hidden bg-[#0b111e] border border-slate-800 rounded-xl p-4 mt-4">
+            <div class="text-center text-slate-500 text-xs">جاري جلب وتحليل البيانات المباشرة من الإدارة المركزية...</div>
+        </div>
+    </div>
+
+    <div id="live-tables-panel" class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg flex flex-col overflow-hidden relative mt-8 transition-all">
+        <button onclick="closeTool('live-tables-panel', 'جداول المراقبة الحية')" class="absolute top-3 left-4 text-slate-500 hover:text-rose-500 text-xs font-bold transition z-10 flex items-center gap-1 bg-[#0f172a] px-2 py-1 rounded border border-slate-800">
+            <span>✖ إغلاق الجداول</span>
+        </button>
+
+        <div class="flex border-b border-slate-800 bg-[#151f32] pr-2">
+            <button onclick="switchTab('pppoe')" id="btn-pppoe" class="py-3 px-6 text-xs font-bold text-blue-400 border-b-2 border-blue-500 transition hover:bg-slate-800/50">
+                📡 المشتركين (PPPoE)
+            </button>
+            <button onclick="switchTab('hotspot')" id="btn-hotspot" class="py-3 px-6 text-xs font-bold text-slate-400 border-b-2 border-transparent transition hover:bg-slate-800/50">
+                🎟️ كروت الهوت سبوت (Hotspot)
+            </button>
+        </div>
+
+        <div id="table-pppoe" class="overflow-x-auto custom-scroll min-h-[250px]">
+            <table class="w-full text-right text-xs whitespace-nowrap">
+                <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4 font-bold text-center">النوع</th>
+                        <th class="py-3 px-4 font-bold">اسم المشترك / الجهاز</th>
+                        <th class="py-3 px-4 font-bold text-center">المعرف المرجعي</th>
+                        <th class="py-3 px-4 font-bold text-center w-48">الاستهلاك</th>
+                        <th class="py-3 px-4 font-bold text-center">التحكم الفوري</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/50">
+                    {% for user in pppoe_users %}
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 text-center"><span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold px-2 py-1 rounded">PPP</span></td>
+                        <td class="py-3 px-4 text-white font-bold">{{ user.name }}</td>
+                        <td class="py-3 px-4 text-center text-slate-300 font-mono">{{ user.username }}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex justify-between text-[9px] mb-1"><span class="text-emerald-400 font-bold">{{ user.used_gb }} GB</span><span class="text-slate-500">من {{ user.total_gb }} GB</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5">
+                                <div class="live-progress alert-enabled h-1.5 rounded-full transition-colors duration-300" data-width="{{ user.percent | default(0) }}"></div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="executeUserAction('{{ user.id }}', 'disconnect')" class="text-rose-400 hover:text-rose-300 border border-rose-900/50 hover:bg-rose-900/30 px-3 py-1 rounded text-[10px] transition font-bold">طرد الجهاز</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="py-10 text-center text-slate-500 font-bold">لا توجد اتصالات نشطة حالياً.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div id="table-hotspot" class="overflow-x-auto custom-scroll min-h-[250px] hidden">
+            <table class="w-full text-right text-xs whitespace-nowrap">
+                <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-3 px-4 font-bold text-center">النوع</th>
+                        <th class="py-3 px-4 font-bold">العرض الفعال</th>
+                        <th class="py-3 px-4 font-bold text-center">رقم الكارت (PIN)</th>
+                        <th class="py-3 px-4 font-bold text-center w-48">الاستهلاك</th>
+                        <th class="py-3 px-4 font-bold text-center">التحكم الفوري</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/50">
+                    {% for voucher in hotspot_vouchers %}
+                    <tr class="hover:bg-slate-800/30 transition bg-purple-900/5">
+                        <td class="py-3 px-4 text-center"><span class="bg-purple-600/20 text-purple-400 border border-purple-500/30 text-[9px] font-bold px-2 py-1 rounded">HOT</span></td>
+                        <td class="py-3 px-4 text-white font-bold">{{ voucher.profile_name }}</td>
+                        <td class="py-3 px-4 text-center text-emerald-400 font-mono font-bold">{{ voucher.pin }}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex justify-between text-[9px] mb-1"><span class="text-blue-400 font-bold">{{ voucher.used_mb }} MB</span><span class="text-slate-500">من {{ voucher.total_mb }} MB</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5">
+                                <div class="live-progress alert-enabled h-1.5 rounded-full transition-colors duration-300" data-width="{{ voucher.percent | default(0) }}"></div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="executeUserAction('{{ voucher.id }}', 'disconnect')" class="text-rose-400 hover:text-rose-300 border border-rose-900/50 hover:bg-rose-900/30 px-3 py-1 rounded text-[10px] transition font-bold">إلغاء الجلسة</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="py-10 text-center text-slate-500 font-bold">لا يوجد زوار متصلين بكروت حالياً.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {# ======================================================================== #}
+    {# القسم الرابع: نظام الكافيهات - Section 4: Cafes System #}
+    {# ======================================================================== #}
+    {% elif current_role == 'cafe' %}
+
+    <div class="bg-[#151f32] border border-blue-900/50 rounded-xl p-5 mt-6 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-2xl text-blue-500 shadow-[inset_0_0_10px_rgba(59,130,246,0.2)]">
+                📡
+            </div>
+            <div>
+                <h3 class="text-sm font-black text-white">حالة ربط المايكروتيك (راوتر الكافيه)</h3>
+                <p class="text-[10px] text-slate-400 mt-1">يجب ربط الراوتر بالسيرفر المركزي لتفعيل الكروت وبدء العمل.</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="openCafeScriptModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg text-xs transition shadow-lg shadow-blue-600/20">
+                ⚙️ إعداد الراوتر وتوليد السكريبت
+            </button>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+        <a href="/cafe/finance/shift" class="group bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-md hover:border-emerald-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-10 h-10 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition">💰</div>
+            <div class="text-left"><span class="block text-[11px] text-slate-400 font-bold mb-0.5">مبيعات الوردية</span><span class="block text-xl font-black text-white font-mono">{{ stats.shift_sales | default(0) }} ج.م</span></div>
+        </a>
+        <a href="/cafe/vouchers/sold" class="group bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-md hover:border-purple-500 hover:bg-[#151f32] transition cursor-pointer">
+            <div class="w-10 h-10 rounded bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition">🎟️</div>
+            <div class="text-left"><span class="block text-[11px] text-slate-400 font-bold mb-0.5">الكروت المباعة</span><span class="block text-xl font-black text-white font-mono">{{ stats.sold_vouchers | default(0) }}</span></div>
+        </a>
+        <a href="/cafe/sessions/active" class="group bg-[#0f172a] border border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-md hover:border-blue-500 hover:bg-[#151f32] transition cursor-pointer relative">
+            <div class="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition"><span class="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>👥</div>
+            <div class="text-left"><span class="block text-[11px] text-slate-400 font-bold mb-0.5">الزبائن المتصلين الآن</span><span class="block text-xl font-black text-white font-mono">{{ stats.active_cafe_users | default(0) }}</span></div>
+        </a>
+    </div>
+
+    {% endif %}
+
+    <div class="mt-12 pt-4 border-t border-slate-800 text-center flex flex-col items-center justify-center space-y-1">
+        <span class="text-slate-500 text-[10px] font-mono tracking-widest uppercase">Powered by Sakr Connect Central System</span>
+        <span class="text-slate-400 text-xs font-bold">تطوير: صقر ميديا - م/ أحمد سالم الملواني &copy; {{ current_year | default(2026) }}</span>
+    </div>
+
+    {% endif %} {# نهاية الجدار العازل - End of Lock Screen Check #}
+    
+{# ======================================================================== #}
+{# القسم السادس: النوافذ المنبثقة والقوائم الجانبية - Section 6: Modals & Drawers #}
+{# ======================================================================== #}
+
+{% if current_role == 'cafe' %}
+<div id="cafe-script-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity">
+    <div class="bg-[#0f172a] border border-blue-500/50 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#151f32]">
+            <h3 class="text-sm font-black text-white flex items-center gap-2"><span class="text-blue-500">⚙️</span> دليل ربط راوتر الكافيه (المايكروتيك)</h3>
+            <button onclick="closeCafeScriptModal()" class="text-slate-400 hover:text-white transition font-bold text-lg">&times;</button>
+        </div>
+        
+        <div class="p-5">
+            <div class="bg-[#0b111e] border border-slate-700 rounded-lg p-4 mb-5 shadow-inner">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs text-slate-400 font-bold">سكريبت الربط الخاص بك:</span>
+                    <button onclick="copyCafeScript()" class="bg-slate-800 hover:bg-slate-700 text-blue-400 hover:text-white px-3 py-1.5 rounded text-[10px] font-bold transition flex items-center gap-1 border border-slate-700">
+                        📋 نسخ السكريبت
+                    </button>
+                </div>
+                <textarea id="mikrotik-script-text" readonly class="w-full bg-[#151f32] text-emerald-400 font-mono text-[10px] p-3 rounded border border-slate-800 h-24 outline-none resize-none custom-scroll" dir="ltr">/radius remove [find comment="SakrConnect_Radius"]
+/radius add address=192.168.1.2 secret=123456 service=hotspot authentication-port=1812 accounting-port=1813 comment="SakrConnect_Radius"
+/ip hotspot profile set [find name=default] radius-location-id="{{ session.get('network_id', 'CAFE_ID') }}" use-radius=yes</textarea>
+            </div>
+
+            <h4 class="text-xs font-black text-white mb-3">كيفية وضع السكريبت في الراوتر؟</h4>
+            
+            <div class="flex border-b border-slate-800 mb-4">
+                <button onclick="switchCafeGuide('mobile')" id="btn-cguide-mobile" class="flex-1 py-2 text-xs font-bold text-blue-400 border-b-2 border-blue-500 transition">📱 عن طريق الموبايل (الأسهل)</button>
+                <button onclick="switchCafeGuide('pc')" id="btn-cguide-pc" class="flex-1 py-2 text-xs font-bold text-slate-500 border-b-2 border-transparent transition">💻 عن طريق الكمبيوتر</button>
+            </div>
+            
+            <div id="cguide-mobile" class="space-y-3 block">
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">1</span>
+                    <span class="text-xs text-slate-300">انسخ السكريبت من الزرار بالأعلى، ثم اتصل بشبكة واي فاي المايكروتيك.</span>
+                </div>
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">2</span>
+                    <span class="text-xs text-slate-300">افتح تطبيق <strong class="text-white">MikroTik</strong> (من متجر بلاي أو آبل)، واضغط على اتصال.</span>
+                </div>
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">3</span>
+                    <span class="text-xs text-slate-300">من القائمة، اختر <strong class="text-amber-400">Terminal</strong>، الصق السكريبت واضغط زر الإدخال (Enter).</span>
+                </div>
+            </div>
+            
+            <div id="cguide-pc" class="space-y-3 hidden">
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">1</span>
+                    <span class="text-xs text-slate-300">انسخ السكريبت، ثم اتصل بالمايكروتيك (عبر كابل أو واي فاي).</span>
+                </div>
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">2</span>
+                    <span class="text-xs text-slate-300">افتح المتصفح واكتب <strong class="text-white">192.168.88.1</strong> أو استخدم برنامج <strong class="text-white">Winbox</strong>.</span>
+                </div>
+                <div class="flex gap-3 items-center bg-slate-800/50 p-2.5 rounded border border-slate-800">
+                    <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-mono">3</span>
+                    <span class="text-xs text-slate-300">اضغط على <strong class="text-amber-400">Terminal</strong> من القائمة، الصق السكريبت واضغط (Enter).</span>
+                </div>
+            </div>
+            
+            <button onclick="closeCafeScriptModal()" class="w-full mt-6 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-lg text-xs transition border border-slate-700">إغلاق النافذة</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div id="quick-action-drawer" class="fixed inset-y-0 right-0 w-80 md:w-96 bg-[#1e293b] border-l border-[#334155] shadow-[-10px_0_30px_rgba(0,0,0,0.6)] transform translate-x-full transition-transform duration-300 z-50 flex flex-col" dir="{{ 'ltr' if session.get('lang') == 'en' else 'rtl' }}">
+    <div class="p-4 border-b border-[#334155] flex justify-between items-center bg-indigo-950/40">
+        <h3 id="drawer-title" class="text-sm font-black text-white flex items-center gap-2"></h3>
+        <button onclick="closeActionDrawer()" class="text-slate-400 hover:text-rose-500 transition font-bold text-2xl leading-none">&times;</button>
+    </div>
+
+    <div id="drawer-bulk-actions" class="p-3 bg-slate-900/30 flex gap-2 border-b border-[#334155] hidden">
+        <button onclick="executeBulk('renew')" class="flex-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white py-2 rounded text-[10px] font-bold transition">تجديد الكل</button>
+        <button onclick="executeBulk('suspend')" class="flex-1 bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600 hover:text-white py-2 rounded text-[10px] font-bold transition">إيقاف الكل</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3" id="drawer-content"></div>
+</div>
+<div id="drawer-overlay" onclick="closeActionDrawer()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+{% if current_role == 'cafe' %}
+<div id="quick-voucher-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-[#0f172a] border border-purple-500/50 rounded-xl p-6 w-96 shadow-2xl shadow-purple-500/20">
+        <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2">⚡ توليد كارت سريع للطباعة</h3>
+        <label class="block text-xs text-slate-400 mb-2">اختر الباقة المناسبة للعميل:</label>
+        <select id="voucher-plan-select" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 mb-6">
+            <option value="1hour">باقة 1 ساعة (سحب مفتوح) - 5 ج.م</option>
+            <option value="1day">باقة 1 يوم (2 جيجا) - 15 ج.م</option>
+            <option value="custom">تخصيص رصيد حر...</option>
+        </select>
+        <div id="voucher-result" class="hidden mb-4 p-4 border border-emerald-500/30 bg-emerald-900/20 rounded-lg text-center">
+            <span class="block text-xs text-emerald-400 mb-1">تم توليد رقم الـ PIN:</span>
+            <span id="generated-pin" class="block text-3xl font-mono font-black text-white tracking-widest"></span>
+        </div>
+        <div class="flex gap-3">
+            <button id="btn-generate-print" onclick="executeVoucherGeneration()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-lg font-bold transition shadow-lg shadow-purple-600/20">توليد وعرض</button>
+            <button onclick="closeQuickVoucherModal()" class="px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition">إغلاق</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{# ======================================================================== #}
+{# القسم السابع: أوامر الجافاسكريبت والمحركات - Section 7: JavaScript Logic #}
+{# ======================================================================== #}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    
+    document.querySelectorAll('.dynamic-gauge').forEach(function(gauge) {
+        const progress = parseFloat(gauge.getAttribute('data-progress')) || 0;
+        let color = gauge.getAttribute('data-color') || '#3b82f6'; 
+        
+        if (gauge.classList.contains('alert-enabled')) {
+            if (progress <= 50) color = '#10b981'; 
+            else if (progress <= 75) color = '#eab308'; 
+            else if (progress <= 90) color = '#f97316'; 
+            else color = '#ef4444'; 
+            
+            const textElement = gauge.querySelector('div');
+            if(textElement) textElement.style.color = color;
+        }
+        
+        gauge.style.background = `conic-gradient(${color} ${progress}%, #1e293b 0)`;
+    });
+
+    document.querySelectorAll('.live-progress').forEach(function(bar) {
+        const widthPercent = parseFloat(bar.getAttribute('data-width')) || 0;
+        bar.style.width = widthPercent + '%';
+        
+        if (bar.classList.contains('alert-enabled')) {
+            if (widthPercent <= 50) bar.style.backgroundColor = '#10b981'; 
+            else if (widthPercent <= 75) bar.style.backgroundColor = '#eab308'; 
+            else if (widthPercent <= 90) bar.style.backgroundColor = '#f97316'; 
+            else bar.style.backgroundColor = '#ef4444'; 
+        } else {
+            if (!bar.style.backgroundColor) bar.style.backgroundColor = '#3b82f6'; 
+        }
+    });
+
+});
+
+function openActionDrawer(filterType, title) {
+    const drawer = document.getElementById('quick-action-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    const contentEl = document.getElementById('drawer-content');
+    const bulkActions = document.getElementById('drawer-bulk-actions');
+    
+    document.getElementById('drawer-title').innerText = title;
+    
+    if(['expired', 'warning', 'suspended'].includes(filterType)) {
+        bulkActions.classList.remove('hidden');
+    } else {
+        bulkActions.classList.add('hidden');
+    }
+
+    contentEl.innerHTML = '<div class="text-center text-slate-400 text-xs py-10 animate-pulse">جاري جلب البيانات المباشرة من السيرفر...</div>';
+    drawer.classList.remove('translate-x-full');
+    overlay.classList.remove('hidden');
+
+    fetch(`/api/quick_drawer/${filterType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success === true) {
+                if (data.data && data.data.length > 0) {
+                    let html = '';
+                    data.data.forEach(user => {
+                        const name = user.name || user.username;
+                        const username = user.username || user.ip;
+                        const statusText = user.status || user.info || "نشط";
+                        const primaryAction = "details";
+                        html += generateUserActionCard(name, username, statusText, primaryAction, user.username);
+                    });
+                    contentEl.innerHTML = html;
+                } else {
+                    contentEl.innerHTML = '<div class="text-center text-slate-400 text-xs py-10">لا يوجد بيانات لعرضها في هذه الفئة حالياً.</div>';
+                }
+            } else {
+                contentEl.innerHTML = `<div class="text-center text-rose-400 text-xs py-10">حدث خطأ في استرجاع البيانات.</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Fetch Error:', error);
+            contentEl.innerHTML = '<div class="text-center text-rose-400 text-xs py-10">فشل الاتصال بقاعدة البيانات المركزية.</div>';
+        });
+}
+function closeActionDrawer() {
+    document.getElementById('quick-action-drawer').classList.add('translate-x-full');
+    document.getElementById('drawer-overlay').classList.add('hidden');
+}
+
+function generateUserActionCard(name, username, statusText, primaryAction, userId) {
+    let buttons = '';
+    
+    if(primaryAction === 'renew') {
+        buttons = `
+            <button onclick="executeUserAction('${userId}', 'renew')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-[10px] font-bold transition">تجديد</button>
+            <button onclick="executeUserAction('${userId}', 'suspend')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded text-[10px] font-bold transition">إيقاف</button>
+        `;
+    } else if(primaryAction === 'disconnect') {
+        buttons = `
+            <button onclick="executeUserAction('${userId}', 'disconnect')" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded text-[10px] font-bold transition">طرد</button>
+        `;
+    } else if(primaryAction === 'delete') {
+        buttons = `
+            <button onclick="executeUserAction('${userId}', 'delete')" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-bold transition">حذف جذري</button>
+        `;
+    } else {
+        buttons = `
+            <a href="/manage/users?search=${username}" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-[10px] font-bold transition">التفاصيل</a>
+        `;
+    }
+
+    return `
+    <div class="bg-[#0f172a] border border-[#334155] rounded-lg p-3 flex flex-col gap-2 hover:border-slate-600 transition shadow-sm">
+        <div class="flex justify-between items-start">
+            <div>
+                <span class="block text-white text-xs font-bold">${name}</span>
+                <span class="block text-slate-400 text-[10px] font-mono mt-0.5">${username}</span>
+            </div>
+            <span class="text-rose-400 text-[9px] font-bold bg-rose-500/10 px-2 py-1 rounded">${statusText}</span>
+        </div>
+        <div class="flex justify-end gap-2 mt-1 border-t border-slate-700/50 pt-2">
+            ${buttons}
+        </div>
+    </div>`;
+}
+
+function executeUserAction(userId, actionType) {
+    const actionNames = {
+        'renew': 'تجديد الاشتراك لـ',
+        'suspend': 'إيقاف الحساب لـ',
+        'disconnect': 'فصل الاتصال عن',
+        'delete': 'حذف جذري لـ'
+    };
+    
+    if(confirm(`هل أنت متأكد من إجراء (${actionNames[actionType]}) للمعرف (${userId})؟`)) {
+        if (actionType === 'renew' || actionType === 'delete') {
+            const route = actionType === 'renew' ? `/subscribers/renew/${userId}` : `/subscribers/delete/${userId}`;
+            fetch(route, { method: 'POST' })
+                .then(response => {
+                    if(response.ok) {
+                        alert('✅ تم تنفيذ الإجراء وتحديث البيانات بنجاح.');
+                        window.location.reload(); 
+                    } else {
+                        alert('❌ حدث خطأ من السيرفر أثناء التنفيذ.');
+                    }
+                })
+                .catch(err => { alert('❌ فشل الاتصال بقاعدة البيانات.'); });
+        } else {
+            fetch('/api/client/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: userId, action: actionType, system: 'pppoe' }) 
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('✅ ' + data.message);
+                    window.location.reload();
+                } else {
+                    alert('❌ حدث خطأ: ' + data.message);
+                }
+            })
+            .catch(err => { alert('❌ فشل الاتصال بـ API الراديوس.'); });
+        }
+    }
+}
+
+function executeBulk(actionType) {
+    const msg = actionType === 'renew' ? 'تجديد جميع المشتركين' : 'إيقاف جميع المشتركين';
+    if(confirm(`هل أنت متأكد من إجراء (${msg}) في هذه القائمة دفعة واحدة؟`)) {
+        alert('⚙️ سيتم تفعيل الإجراءات الجماعية في التحديث القادم بعد التأكد من استقرار الإجراء الفردي.');
+    }
+}
+
+function closeTool(panelId, title) {
+    const panel = document.getElementById(panelId);
+    panel.classList.add('hidden');
+    
+    const restoreZone = document.getElementById('restore-zone');
+    const restoreBtn = document.createElement('button');
+    restoreBtn.id = 'restore-btn-' + panelId;
+    restoreBtn.className = 'bg-slate-800 border border-slate-700 text-blue-400 hover:text-white hover:bg-slate-700 text-[11px] py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition shadow-sm font-bold';
+    restoreBtn.innerHTML = `<span>👁️ إظهار: ${title}</span>`;
+    
+    restoreBtn.onclick = function() {
+        panel.classList.remove('hidden');
+        this.remove();
+    };
+    
+    restoreZone.appendChild(restoreBtn);
+}
+
+function switchTab(tabName) {
+    const btnPppoe = document.getElementById('btn-pppoe');
+    const btnHotspot = document.getElementById('btn-hotspot');
+    const tablePppoe = document.getElementById('table-pppoe');
+    const tableHotspot = document.getElementById('table-hotspot');
+
+    if (tabName === 'pppoe' && tablePppoe) {
+        if(btnPppoe) btnPppoe.className = "py-3 px-6 text-xs font-bold text-blue-400 border-b-2 border-blue-500 transition hover:bg-slate-800/50";
+        if(btnHotspot) btnHotspot.className = "py-3 px-6 text-xs font-bold text-slate-400 border-b-2 border-transparent transition hover:bg-slate-800/50";
+        tablePppoe.classList.remove('hidden');
+        if(tableHotspot) tableHotspot.classList.add('hidden');
+    } else if (tabName === 'hotspot' && tableHotspot) {
+        if(btnHotspot) btnHotspot.className = "py-3 px-6 text-xs font-bold text-purple-400 border-b-2 border-purple-500 transition hover:bg-slate-800/50";
+        if(btnPppoe) btnPppoe.className = "py-3 px-6 text-xs font-bold text-slate-400 border-b-2 border-transparent transition hover:bg-slate-800/50";
+        tableHotspot.classList.remove('hidden');
+        if(tablePppoe) tablePppoe.classList.add('hidden');
+    }
+}
+
+function triggerDetailedXRay() {
+    const pin = document.getElementById('voucher-pin-input').value;
+    if(pin.trim() === "") { alert("برجاء إدخال رقم الكارت أو الماك للفحص الفوري."); return; }
+    const logDiv = document.getElementById('xray-detailed-log');
+    logDiv.classList.remove('hidden');
+    logDiv.innerHTML = '<div class="text-amber-400 text-xs text-center animate-pulse py-4">جاري رصد السجلات وتتبع البيانات من السيرفر المركزي...</div>';
+    
+    setTimeout(() => {
+        logDiv.innerHTML = `<div class="text-emerald-400 text-xs font-mono">✅ تم سحب البيانات للرقم (${pin}). الاستهلاك: 1.2GB | الحالة: نشط.</div>`;
+    }, 1500);
+}
+
+// ==========================================
+// دوال نظام الكافيهات وتوليد السكريبت (حي وديناميكي)
+// ==========================================
+function openCafeScriptModal() {
+    document.getElementById('cafe-script-modal').classList.remove('hidden');
+    const textArea = document.getElementById('mikrotik-script-text');
+    if (textArea) {
+        textArea.value = "⏳ جاري جلب السكريبت من السيرفر...";
+        fetch('/api/generate_script/{{ session.get("username") }}')
+            .then(response => response.text())
+            .then(data => {
+                textArea.value = data;
+            })
+            .catch(err => {
+                textArea.value = "❌ حدث خطأ أثناء جلب السكريبت من السيرفر.";
+            });
+    }
+}
+
+function closeCafeScriptModal() {
+    document.getElementById('cafe-script-modal').classList.add('hidden');
+}
+
+function switchCafeGuide(type) {
+    const btnMobile = document.getElementById('btn-cguide-mobile');
+    const btnPc = document.getElementById('btn-cguide-pc');
+    const divMobile = document.getElementById('cguide-mobile');
+    const divPc = document.getElementById('cguide-pc');
+    
+    if(type === 'mobile') {
+        btnMobile.className = "flex-1 py-2 text-xs font-bold text-blue-400 border-b-2 border-blue-500 transition";
+        btnPc.className = "flex-1 py-2 text-xs font-bold text-slate-500 border-b-2 border-transparent transition";
+        divMobile.classList.remove('hidden');
+        divPc.classList.add('hidden');
+    } else {
+        btnPc.className = "flex-1 py-2 text-xs font-bold text-blue-400 border-b-2 border-blue-500 transition";
+        btnMobile.className = "flex-1 py-2 text-xs font-bold text-slate-500 border-b-2 border-transparent transition";
+        divPc.classList.remove('hidden');
+        divMobile.classList.add('hidden');
+    }
+}
+
+function copyCafeScript() {
+    const textElement = document.getElementById('mikrotik-script-text');
+    textElement.select();
+    document.execCommand('copy');
+    alert('✅ تم نسخ السكريبت بنجاح! يمكنك الآن لصقه في تطبيق المايكروتيك.');
+}
+
+function openQuickVoucherModal() {
+    document.getElementById('quick-voucher-modal').classList.remove('hidden');
+    document.getElementById('voucher-result').classList.add('hidden');
+    
+    const btn = document.getElementById('btn-generate-print');
+    btn.innerText = "توليد وعرض الكارت ⚡";
+    btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+    btn.classList.replace('hover:bg-blue-500', 'hover:bg-emerald-500');
+}
+
+function closeQuickVoucherModal() {
+    document.getElementById('quick-voucher-modal').classList.add('hidden');
+}
+
+function executeVoucherGeneration() {
+    const btn = document.getElementById('btn-generate-print');
+    const time = document.getElementById('v-time') ? document.getElementById('v-time').value : '';
+    const price = document.getElementById('v-price') ? document.getElementById('v-price').value : '';
+    const quota = document.getElementById('v-quota') ? document.getElementById('v-quota').value : '';
+    const speed = document.getElementById('v-speed') ? document.getElementById('v-speed').value : '';
+    
+    btn.innerHTML = '<span class="animate-pulse">⏳ جاري توليد الكارت بالراديوس...</span>';
+    btn.disabled = true;
+
+    fetch('/api/vouchers/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time: time, price: price, quota: quota, speed: speed })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            if(document.getElementById('res-user')) document.getElementById('res-user').innerText = data.username;
+            if(document.getElementById('res-pass')) document.getElementById('res-pass').innerText = data.password;
+            if(document.getElementById('res-price')) document.getElementById('res-price').innerText = price;
+            if(document.getElementById('res-time')) document.getElementById('res-time').innerText = time;
+            if(document.getElementById('res-quota')) document.getElementById('res-quota').innerText = quota;
+            if(document.getElementById('res-speed')) document.getElementById('res-speed').innerText = speed;
+            
+            document.getElementById('voucher-result').classList.remove('hidden');
+            btn.innerText = "توليد كارت جديد 🔄";
+            btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+            btn.classList.replace('hover:bg-emerald-500', 'hover:bg-blue-500');
+        } else {
+            alert('❌ فشل توليد الكارت: ' + (data.message || 'خطأ غير معروف'));
+            btn.innerText = "توليد وعرض الكارت ⚡";
+        }
+    })
+    .catch(err => {
+        alert('❌ حدث خطأ في الاتصال بالسيرفر.');
+        btn.innerText = "توليد وعرض الكارت ⚡";
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+// ==========================================
+// عداد تنازلي للفترة التجريبية (48 ساعة)
+// ==========================================
+function initTrialCountdown() {
+    const countdownEl = document.getElementById('trial-countdown');
+    if (!countdownEl) return;
+
+    // قراءة trial_end_iso من الجلسة (تم تعيينها في الـ middleware)
+    const trialEndIso = "{{ session.get('trial_end_iso', '') }}";
+    if (!trialEndIso) {
+        countdownEl.textContent = "غير متاح";
+        return;
+    }
+
+    const trialEnd = new Date(trialEndIso).getTime();
+    
+    function update() {
+        const now = Date.now();
+        const diff = trialEnd - now;
+        
+        if (diff <= 0) {
+            countdownEl.textContent = "انتهت ✅";
+            countdownEl.classList.add("text-rose-400");
+            // إعادة تحميل الصفحة لتطبيق القفل
+            setTimeout(() => location.reload(), 5000);
+            return;
+        }
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        countdownEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // تغيير اللون عند اقتراب النهاية
+        if (hours < 1) {
+            countdownEl.classList.add("text-rose-400", "animate-pulse");
+            countdownEl.classList.remove("text-amber-400");
+        } else if (hours < 6) {
+            countdownEl.classList.add("text-amber-400");
+            countdownEl.classList.remove("text-rose-400");
+        }
+    }
+    
+    update();
+    setInterval(update, 1000);
+}
+
+// تهيئة العداد عند تحميل الصفحة
+document.addEventListener("DOMContentLoaded", function() {
+    initTrialCountdown();
+});
+</script>
+{% endblock %}

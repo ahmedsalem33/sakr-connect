@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>صقر كونكت باي - تسجيل الدخول</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app_login.css') }}">
+</head>
+<body>
+
+    <div class="app-wrapper">
+        
+        <header class="app-header">
+            <h1>{{ network_owner.name | default('شبكة الصقر') }}</h1>
+            {% if network_owner.support_info %}
+                <p>{{ network_owner.support_info }}</p>
+            {% else %}
+                <p>مرحباً بك في بوابة الدخول الموحدة للشبكة</p>
+            {% endif %}
+        </header>
+
+        <main class="login-container">
+            <div class="network-branding">
+                {% if network_owner.logo %}
+                    <img src="{{ url_for('static', filename=network_owner.logo) }}" alt="شعار الشبكة" class="network-logo">
+                {% else %}
+                    <div class="network-icon">🌐</div>
+                {% endif %}
+                <h2>تسجيل الدخول</h2>
+                <p>أدخل بيانات الحساب لإدارة اشتراكك أو رصيدك</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="error-msg">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('auth.login') }}" method="POST" class="login-form">
+                <div class="input-group">
+                    <label for="username">اسم المستخدم أو رقم الهاتف:</label>
+                    <input type="text" id="username" name="username" required placeholder="أدخل بياناتك هنا...">
+                </div>
+
+                <div class="input-group">
+                    <label for="password">كلمة المرور:</label>
+                    <input type="password" id="password" name="password" required placeholder="••••••••" dir="ltr">
+                </div>
+
+                <div class="remember-me">
+                    <label>
+                        <input type="checkbox" name="remember_me" value="on">
+                        تذكر بياناتي على هذا الجهاز
+                    </label>
+                </div>
+
+                <div class="action-buttons">
+                    <button type="submit" name="role" value="subscriber" class="login-btn">دخول مشترك</button>
+                    <button type="submit" name="role" value="reseller" class="login-btn">دخول موزع</button>
+                </div>
+            </form>
+        </main>
+
+        <footer class="app-footer">
+            <p>صقر كونكت باي</p>
+            <p>تطوير وبرمجة: صقر ميديا إيجنسي | Sakr Media Agency</p>
+            <p>{{ global_settings.server_name | default('السيرفر المركزي') }}</p>
+        </footer>
+
+    </div>
+
+</body>
+</html>

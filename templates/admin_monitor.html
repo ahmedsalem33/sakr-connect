@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6 max-w-[1400px] mx-auto" dir="rtl">
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <div class="bg-[#0f172a] border border-blue-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-1 h-full bg-blue-500"></div>
+            <span class="text-[11px] text-slate-400 font-bold tracking-wide">جلسات الكروت النشطة الآن</span>
+            <div class="flex items-end gap-3 mt-1">
+                <h2 class="text-3xl font-black text-blue-400 font-mono">{{ active_vouchers }}</h2>
+                <span class="text-[10px] text-emerald-400 font-bold mb-1 flex items-center gap-1">↑ مستقر</span>
+            </div>
+            <div class="absolute -bottom-4 -left-4 text-blue-500/10 text-6xl group-hover:scale-110 transition duration-500">🎟️</div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-emerald-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500"></div>
+            <span class="text-[11px] text-slate-400 font-bold tracking-wide">إجمالي الكروت المُصدرة (الشهر)</span>
+            <div class="flex items-end gap-3 mt-1">
+                <h2 class="text-3xl font-black text-emerald-400 font-mono">{{ total_vouchers }}</h2>
+            </div>
+            <div class="absolute -bottom-4 -left-4 text-emerald-500/10 text-6xl group-hover:scale-110 transition duration-500">📦</div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-rose-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-1 h-full bg-rose-500"></div>
+            <span class="text-[11px] text-slate-400 font-bold tracking-wide">كروت منتهية / مسدودة (Depleted)</span>
+            <div class="flex items-end gap-3 mt-1">
+                <h2 class="text-3xl font-black text-rose-400 font-mono">{{ depleted_vouchers }}</h2>
+                <span class="text-[10px] text-rose-400 font-bold mb-1">بحاجة للتجديد</span>
+            </div>
+            <div class="absolute -bottom-4 -left-4 text-rose-500/10 text-6xl group-hover:scale-110 transition duration-500">🗑️</div>
+        </div>
+        
+        <div class="bg-[#0f172a] border border-amber-900/30 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-1 h-full bg-amber-500"></div>
+            <span class="text-[11px] text-slate-400 font-bold tracking-wide">محاولات تخطي / أخطاء (Security)</span>
+            <div class="flex items-end gap-3 mt-1">
+                <h2 class="text-3xl font-black text-amber-400 font-mono">{{ security_alerts }}</h2>
+                <span class="text-[10px] text-amber-400 font-bold mb-1 animate-pulse">مراقبة مطلوبة</span>
+            </div>
+            <div class="absolute -bottom-4 -left-4 text-amber-500/10 text-6xl group-hover:scale-110 transition duration-500">🛡️</div>
+        </div>
+        
+    </div>
+
+    <div class="bg-gradient-to-r from-[#0f172a] to-[#151f32] border border-slate-700 rounded-xl p-6 shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+        <h3 class="text-sm font-black text-slate-200 mb-4 flex items-center gap-2 tracking-wide">
+            <span class="text-xl">🔍</span> محرك الفحص الجنائي والتتبع العميق للكروت (Forensic PIN Audit)
+        </h3>
+        <p class="text-[11px] text-slate-500 mb-4">أدخل كود الكارت (PIN) أو الـ MAC Address لفحص حالة الجلسة الحية، وموقع السحب، وأسباب انقطاع خدمة المستخدم بدقة.</p>
+        
+        <form id="audit-form" class="flex flex-col md:flex-row gap-3 relative z-10">
+            <div class="relative flex-1">
+                <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500">⌨️</span>
+                <input type="text" id="audit-input" required class="w-full bg-[#0b111e] border border-slate-600 rounded-lg pr-12 pl-4 py-3 text-white font-mono text-sm outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition shadow-inner" placeholder="أدخل كود الكارت، اسم المستخدم، أو الـ MAC Address المراد فحصه...">
+            </div>
+            <button type="submit" id="audit-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-3 rounded-lg font-black text-xs transition shadow-lg shadow-cyan-600/20 whitespace-nowrap flex items-center justify-center gap-2">
+                <span>بدء الفحص العميق</span>
+            </button>
+        </form>
+
+        <div id="inspection-results" class="mt-6 border-t border-slate-700 pt-6 hidden animate-fade-in">
+            </div>
+    </div>
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-2xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex flex-wrap justify-between items-center bg-[#151f32] gap-4">
+            <h3 class="text-sm font-black text-slate-200 flex items-center gap-2">
+                <span class="text-amber-500">📊</span> التوزيع الحي والتحليلي للكروت على الشبكات (Live Node Distribution)
+            </h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-right text-xs">
+                <thead class="bg-[#0b111e] text-slate-400 border-b border-slate-800">
+                    <tr>
+                        <th class="py-4 px-4 font-black">الشبكة / نقطة التوزيع (Node Name)</th>
+                        <th class="py-4 px-4 font-black text-emerald-400">المتصلين الآن (Online Users)</th>
+                        <th class="py-4 px-4 font-black text-center w-1/4">معدل استهلاك باقات الكروت</th>
+                        <th class="py-4 px-4 font-black text-center">التشخيص الفني (Status)</th>
+                        <th class="py-4 px-4 font-black text-center">أدوات الإدارة والسيطرة</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for node in networks %}
+                    <tr class="hover:bg-slate-800/40 transition-all">
+                        <td class="py-4 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-amber-400 font-black border border-slate-700">{{ node.name[0] }}</div>
+                                <div>
+                                    <p class="font-black text-slate-200">{{ node.name }}</p>
+                                    <p class="text-[10px] text-slate-500 font-mono mt-0.5">{{ node.type }} | ID: {{ node.id }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-emerald-400 font-black font-mono text-sm">{{ node.online_users }} <span class="text-[10px] text-slate-500 font-sans">مستخدم</span></td>
+                        <td class="py-4 px-4">
+                            {% set pct = (node.used_cards / node.total_cards * 100) if node.total_cards > 0 else 0 %}
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex justify-between font-mono text-[10px]">
+                                    <span class="text-{% if pct > 90 %}rose{% else %}slate{% endif %}-400 font-bold">مستهلك: {{ node.used_cards }}</span>
+                                    <span class="text-slate-500">إجمالي الباتش: {{ node.total_cards }}</span>
+                                </div>
+                                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700/50">
+                                    <div class="h-1.5 rounded-full {% if pct > 90 %}bg-rose-500{% else %}bg-emerald-500{% endif %} transition-all duration-500" {{ ('style="width: ' ~ pct|round ~ '%;"') | safe }}></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-center">
+                            {% if pct > 90 %}
+                            <span class="inline-flex items-center gap-1 bg-rose-500/10 text-rose-400 px-2.5 py-1 rounded border border-rose-500/20 font-bold text-[10px] animate-pulse">
+                                <span>⚠️</span> كروت أوشكت على النفاذ
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded border border-emerald-500/20 font-bold text-[10px]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> نظام مستقر
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-4 text-center">
+                            <button class="px-3 py-1.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white rounded border border-slate-700 hover:border-blue-500 font-bold transition text-[10px]">فحص الباتشات</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-8 px-4 text-center text-slate-500 font-bold">لا توجد شبكات أو نقاط توزيع مسجلة حالياً.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+</style>
+
+<script>
+document.getElementById('audit-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const query = document.getElementById('audit-input').value;
+    const resultDiv = document.getElementById('inspection-results');
+    const btn = document.getElementById('audit-btn');
+    
+    btn.innerHTML = 'جاري الفحص...';
+    btn.disabled = true;
+
+    // تم التعديل الجذري هنا لتخطي الـ BuildError واستخدام مسار ثابت
+    fetch('/admin/api/inspect_pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        resultDiv.innerHTML = data.html;
+        resultDiv.classList.remove('hidden');
+    })
+    .catch(err => {
+        resultDiv.innerHTML = '<p class="text-rose-400 p-4 bg-rose-900/20 rounded border border-rose-800">جاري الإعداد... سيتم تفعيل الفحص الجنائي لاحقاً.</p>';
+        resultDiv.classList.remove('hidden');
+    })
+    .finally(() => {
+        btn.innerHTML = '<span>بدء الفحص العميق</span>';
+        btn.disabled = false;
+    });
+});
+</script>
+{% endblock %}

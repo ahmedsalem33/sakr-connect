@@ -1,0 +1,260 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* تطبيق اللون الديناميكي المسحوب من الإعدادات */
+    :root {
+        --brand-color: {{ app_settings.get('app_primary_color', '#e11d48') }};
+    }
+    .dynamic-bg { background-color: var(--brand-color); }
+    .dynamic-text { color: var(--brand-color); }
+    .dynamic-border { border-color: var(--brand-color); }
+</style>
+
+{% if user_data.network_name %}
+<div class="mb-4 p-4 bg-[#0f172a] border border-slate-800 rounded-xl flex justify-between items-center">
+    <div>
+        <p class="text-xs text-slate-500 font-bold mb-1">مزود الخدمة</p>
+        <h2 class="text-lg font-black text-white">📡 {{ user_data.network_name }}</h2>
+    </div>
+    {% if user_data.support_phone %}
+    <div class="text-left">
+        <p class="text-xs text-slate-500 font-bold mb-1">الدعم الفني</p>
+        <a href="tel:{{ user_data.support_phone }}" class="text-sm font-bold text-blue-400 hover:text-blue-300">📞 {{ user_data.support_phone }}</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-[#0f172a] border border-slate-800 p-4 rounded-xl">
+        <p class="text-xs text-slate-500 font-bold mb-1">الباقة الحالية</p>
+        <h3 class="text-xl font-black text-white">{{ user_data.package_name }}</h3>
+        <p class="text-xs text-slate-400 mt-2">سعر التجديد: <span class="font-bold text-white">{{ user_data.price }} EGP</span></p>
+    </div>
+    
+    <div class="bg-[#0f172a] border border-slate-800 p-4 rounded-xl">
+        <p class="text-xs text-slate-500 font-bold mb-1">تاريخ التجديد / انتهاء الصلاحية</p>
+        <h3 class="text-xl font-black text-amber-400">{{ user_data.next_renewal }}</h3>
+        {% if user_data.accumulated_commission is defined and user_data.accumulated_commission > 0 %}
+        <p class="text-xs text-rose-400 mt-2 font-bold">عمولات مستحقة للمنصة: {{ user_data.accumulated_commission }} EGP</p>
+        {% endif %}
+    </div>
+    
+    <div class="bg-[#0f172a] border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+        <div>
+            <p class="text-xs text-slate-500 font-bold mb-1">حالة الحساب</p>
+            <h3 class="text-xl font-black {% if user_data.status == 'active' %}text-emerald-400{% else %}text-rose-400{% endif %} mb-2">
+                {% if user_data.status == 'active' %}مفعل ونشط{% else %}غير مفعل / منتهي{% endif %}
+            </h3>
+        </div>
+        
+        <div class="mt-2 flex gap-2">
+            <button onclick="openPaymentModal('renew')" class="flex-1 dynamic-bg text-white font-bold py-2 px-3 rounded-lg text-xs shadow-lg transition-all hover:opacity-90">
+                🔄 تجديد الباقة
+            </button>
+            <button onclick="openPaymentModal('voucher')" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-lg transition-all border border-slate-600">
+                🎟️ شراء كارت فوري
+            </button>
+        </div>
+    </div>
+</div>
+
+{% if instant_vouchers %}
+<div class="mb-8 bg-[#0f172a] border border-slate-800 p-5 rounded-xl">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-white">🎟️ كروتي الفورية (سجل الشراء)</h3>
+        <span class="text-xs text-slate-400">انسخ الكود لتسجيل الدخول</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for voucher in instant_vouchers %}
+        <div class="bg-[#151f32] border border-slate-700 p-4 rounded-lg relative overflow-hidden transition-all hover:border-slate-500">
+            <div class="absolute top-0 right-0 bg-emerald-500/20 text-emerald-400 border-b border-l border-emerald-500/30 text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+                تم الشراء
+            </div>
+            <p class="text-slate-400 text-[11px] mb-2">تاريخ العملية: {{ voucher.sold_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            
+            <div class="bg-[#0b111e] border border-slate-600 rounded-md p-3 my-2 text-center group relative cursor-pointer" onclick="copyVoucherCode('{{ voucher.code }}')">
+                <h4 class="text-2xl font-black text-white font-mono tracking-widest select-all">{{ voucher.code }}</h4>
+                <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md backdrop-blur-sm">
+                    <span class="text-white text-xs font-bold">📋 اضغط للنسخ</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center mt-3 text-xs">
+                <span class="text-slate-400">سعر الكارت:</span>
+                <span class="font-bold text-amber-400">{{ voucher.price }} EGP</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div id="payment-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-[#0f172a] border border-slate-800 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+        <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-[#151f32]">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2" id="modal-title">💳 اختيار طريقة الدفع</h3>
+            <button onclick="closePaymentModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        
+        <div class="flex border-b border-slate-800 bg-[#0b111e] text-xs font-bold">
+            {% if payment_settings.get('wallet_active') %}
+            <button onclick="switchTab('tab-wallet')" id="btn-tab-wallet" class="flex-1 py-3 text-center border-b-2 dynamic-border dynamic-text bg-[#0f172a]">📱 محفظة كاش</button>
+            {% endif %}
+            {% if payment_settings.get('instapay_active') %}
+            <button onclick="switchTab('tab-instapay')" id="btn-tab-instapay" class="flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-white">⚡ InstaPay</button>
+            {% endif %}
+        </div>
+
+        <div class="p-6 space-y-4 text-xs text-slate-300">
+            <input type="hidden" id="payment_purpose" value="renew">
+            
+            <div id="tab-wallet" class="payment-tab space-y-4">
+                <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+                    <p class="text-slate-400 mb-1">يرجى تحويل المبلغ المطلوب إلى الرقم التالي:</p>
+                    <h2 class="text-xl font-black text-white my-2" id="payment-amount-display">{{ user_data.price }} EGP</h2>
+                </div>
+
+                <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-center">
+                    <strong class="text-rose-400 text-sm mb-2 block">رقم التحويل المعتمد للشبكة:</strong> 
+                    <span class="font-mono text-2xl block select-all text-white font-bold tracking-wider">{{ user_data.target_wallet }}</span>
+                </div>
+                
+                <p class="text-slate-400 leading-relaxed text-center">{{ payment_settings.get('wallet_instructions', 'يرجى تحويل المبلغ أولاً، ثم كتابة رقمك الذي حولت منه بالأسفل والضغط على إرسال.') }}</p>
+                
+                {% if payment_settings.get('wallet_video_url') %}
+                <a href="{{ payment_settings.get('wallet_video_url') }}" target="_blank" class="block text-center text-blue-400 hover:text-blue-300 hover:underline mb-2">🎥 اضغط هنا لمشاهدة فيديو شرح طريقة الدفع</a>
+                {% endif %}
+
+                <div class="space-y-3 mt-4">
+                    <div>
+                        <label class="block text-slate-400 mb-2 font-bold text-sm">رقم الهاتف الذي قمت بالتحويل منه (هام جداً للمطابقة):</label>
+                        <input type="text" id="senderPhone" placeholder="01xxxxxxxxx" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-4 py-3 text-white text-lg focus:outline-none focus:border-rose-500 text-center tracking-widest font-mono">
+                    </div>
+                </div>
+                <button onclick="submitPaymentForm('cash')" class="w-full dynamic-bg text-white font-bold py-3 text-sm rounded-lg mt-4 transition-all hover:opacity-90 shadow-lg">إرسال الطلب للنظام الآلي</button>
+            </div>
+
+            <div id="tab-instapay" class="payment-tab space-y-4 hidden">
+                <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+                    <p class="text-slate-400 mb-1">المبلغ المطلوب:</p>
+                    <h2 class="text-2xl font-black text-purple-400">{{ user_data.price }} EGP</h2>
+                </div>
+                <div class="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center text-purple-400">
+                    <strong class="text-sm block mb-2">عنوان الدفع الخاص بالشبكة (IPA):</strong> 
+                    <span class="font-mono text-lg block select-all text-white font-bold">{{ payment_settings.get('instapay_ipa', 'غير محدد') }}</span>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-slate-400 mb-2 font-bold">رقم الهاتف أو عنوان الـ IPA الذي حولت منه:</label>
+                    <input type="text" id="instapayRef" placeholder="رقم أو عنوان التحويل" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none text-center text-lg font-mono">
+                </div>
+                <button onclick="submitPaymentForm('instapay')" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 text-sm rounded-lg mt-4 shadow-lg transition-all">تأكيد المعاملة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openPaymentModal(purpose) { 
+    document.getElementById('payment_purpose').value = purpose;
+    
+    if(purpose === 'voucher') {
+        document.getElementById('modal-title').innerHTML = "🎟️ شراء كارت فوري";
+        // تحويل النص لمربع إدخال عشان العميل يكتب قيمة الحوالة للكارت الفوري
+        document.getElementById('payment-amount-display').innerHTML = '<input type="number" id="voucherAmount" placeholder="أدخل مبلغ التحويل هنا (مثال: 50)" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg p-3 text-white text-center outline-none focus:border-amber-500 font-mono text-lg" required>';
+    } else {
+        document.getElementById('modal-title').innerHTML = "🔄 تجديد الباقة الحالية";
+        document.getElementById('payment-amount-display').innerHTML = "{{ user_data.price }} EGP";
+    }
+    
+    document.getElementById('payment-modal').classList.remove('hidden'); 
+}
+
+function closePaymentModal() { 
+    document.getElementById('payment-modal').classList.add('hidden'); 
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.payment-tab').forEach(tab => tab.classList.add('hidden'));
+    document.getElementById(tabId).classList.remove('hidden');
+    
+    // إعادة ضبط شكل الأزرار
+    document.querySelectorAll('[id^="btn-tab-"]').forEach(btn => {
+        btn.className = "flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-white";
+    });
+    
+    let activeBtn = document.getElementById('btn-' + tabId);
+    if(tabId === 'tab-wallet') {
+        activeBtn.className = "flex-1 py-3 text-center border-b-2 dynamic-border dynamic-text bg-[#0f172a]";
+    } else {
+        activeBtn.className = "flex-1 py-3 text-center border-b-2 border-purple-500 text-purple-400 bg-[#0f172a]";
+    }
+}
+
+function copyVoucherCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        alert("✅ تم نسخ كود الكارت بنجاح: " + code);
+    }).catch(err => {
+        console.error('Failed to copy!', err);
+    });
+}
+
+function submitPaymentForm(method) {
+    const purpose = document.getElementById('payment_purpose').value;
+    let senderInfo = method === 'cash' ? document.getElementById('senderPhone').value : document.getElementById('instapayRef').value;
+    
+    if(!senderInfo || senderInfo.trim() === '') {
+        alert("⚠️ يرجى إدخال رقم الهاتف أو بيانات التحويل الخاصة بك لكي يتمكن النظام من مطابقتها.");
+        return;
+    }
+
+    // تحديد المبلغ بناءً على نوع العملية
+    let targetAmount = "{{ user_data.price }}"; // الافتراضي هو سعر التجديد
+    
+    if(purpose === 'voucher') {
+        const vAmtInput = document.getElementById('voucherAmount');
+        if(!vAmtInput || !vAmtInput.value || parseFloat(vAmtInput.value) <= 0) {
+            alert("⚠️ يرجى كتابة المبلغ الذي قمت بتحويله لشراء الكارت بشكل صحيح.");
+            return;
+        }
+        targetAmount = vAmtInput.value;
+    }
+
+    // 🚀 الإرسال الفعلي للباك إند (إنشاء Form ديناميكي)
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/finance/checkout'; // المسار الرئيسي للفواتير
+
+    // 1. حقل المبلغ
+    const amountField = document.createElement('input');
+    amountField.type = 'hidden';
+    amountField.name = 'amount';
+    amountField.value = targetAmount;
+    form.appendChild(amountField);
+
+    // 2. حقل رقم المرسل
+    const phoneField = document.createElement('input');
+    phoneField.type = 'hidden';
+    phoneField.name = 'sender_phone';
+    phoneField.value = senderInfo;
+    form.appendChild(phoneField);
+
+    // 3. طريقة الدفع
+    const methodField = document.createElement('input');
+    methodField.type = 'hidden';
+    methodField.name = 'payment_method';
+    methodField.value = method === 'cash' ? 'Electronic Wallet' : 'InstaPay';
+    form.appendChild(methodField);
+
+    // إرسال الطلب للسيرفر
+    document.body.appendChild(form);
+    form.submit();
+    
+    // تغيير شكل الزر لمنع الضغط مرتين
+    event.target.innerHTML = "⏳ جاري الإرسال...";
+    event.target.style.opacity = "0.7";
+    event.target.disabled = true;
+}
+</script>
+{% endblock %}

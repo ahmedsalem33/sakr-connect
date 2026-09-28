@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6" dir="rtl">
+
+    <div class="border-b border-slate-800">
+        <nav class="flex gap-4" aria-label="Tabs">
+            <button onclick="switchTab('homeTab')" id="btn-homeTab" class="tab-button active px-4 py-3 text-sm font-bold text-blue-400 border-b-2 border-blue-500 hover:text-blue-300 transition">
+                🏠 إدارة مشتركي المنازل المباشرين (PPPoE)
+            </button>
+            <button onclick="switchTab('packagesTab')" id="btn-packagesTab" class="tab-button px-4 py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-200 hover:border-slate-600 transition">
+                📦 إدارة باقات المنازل (تحكم وأجهزة)
+            </button>
+        </nav>
+    </div>
+
+    <div id="homeTab" class="tab-content block">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <a href="?filter=all" class="bg-[#0f172a] border {% if current_filter == 'all' %}border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)]{% else %}border-slate-800{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-blue-500 transition group">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold group-hover:text-blue-400 transition">إجمالي المنازل المباشرة</p>
+                    <h3 class="text-2xl font-black text-slate-100 mt-1">{{ total_clients | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">🏠</div>
+            </a>
+            <a href="?filter=active" class="bg-[#0f172a] border {% if current_filter == 'active' %}border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]{% else %}border-emerald-900/50{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-emerald-500 transition group">
+                <div>
+                    <p class="text-xs text-emerald-500 font-bold group-hover:text-emerald-400 transition">منازل نشطة الآن</p>
+                    <h3 class="text-2xl font-black text-emerald-400 mt-1">{{ active_clients | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">✅</div>
+            </a>
+            <a href="?filter=suspended" class="bg-[#0f172a] border {% if current_filter == 'suspended' %}border-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]{% else %}border-rose-900/50{% endif %} rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-rose-500 transition group">
+                <div>
+                    <p class="text-xs text-rose-500 font-bold group-hover:text-rose-400 transition">لوحات متوقفة</p>
+                    <h3 class="text-2xl font-black text-rose-400 mt-1">{{ suspended_clients | default(0) }}</h3>
+                </div>
+                <div class="text-3xl opacity-80 group-hover:scale-110 transition">🛑</div>
+            </a>
+            <div class="bg-[#0f172a] border border-amber-900/50 rounded-xl p-4 shadow-lg flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-amber-500 font-bold">إجمالي الأرصدة والديون</p>
+                    <h3 class="text-2xl font-black text-amber-400 mt-1">{{ total_balance | default(0) }} <span class="text-xs">EGP</span></h3>
+                </div>
+                <div class="text-3xl opacity-80">💰</div>
+            </div>
+        </div>
+
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#151f32]">
+                <h2 class="text-sm font-bold text-slate-300">📋 قاعدة بيانات عملاء المنازل الأساسيين</h2>
+                <div class="relative w-64">
+                    <input type="text" id="subscriberSearch" onkeyup="searchSubscribers()" placeholder="بحث بالاسم أو اليوزر..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:border-blue-500 transition shadow-inner outline-none">
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-xs" id="subTable">
+                    <thead class="bg-[#0b111e] text-slate-500 border-b border-slate-800">
+                        <tr>
+                            <th class="py-4 px-4 font-black">المشترك / اليوزر</th>
+                            <th class="py-4 px-4 font-black">باقة الإدارة المحددة</th>
+                            <th class="py-4 px-4 font-black text-center">المديونية</th>
+                            <th class="py-4 px-4 font-black text-center">الحالة</th>
+                            <th class="py-4 px-4 font-black text-center">إجراءات سيادية</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50">
+                        {% for client in clients %}
+                        <tr class="hover:bg-slate-800/40 transition sub-row">
+                            <td class="py-3.5 px-4">
+                                <p class="font-bold text-slate-200 sub-name">{{ client.username }}</p>
+                                <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold mt-1 inline-block">عميل نظام أساسي (مباشر)</span>
+                            </td>
+                            <td class="py-3.5 px-4 text-amber-400 font-bold">{{ client.speed }}</td>
+                            <td class="py-3.5 px-4 text-center font-bold text-rose-400">{{ client.balance | default(0) }} EGP</td>
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="px-2 py-1 rounded text-[10px] font-bold {% if client.status == 'active' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-rose-500/10 text-rose-400 border border-rose-500/20{% endif %}">
+                                    {{ 'نشط (اللوحة مفتوحة)' if client.status == 'active' else 'موقوف (فواتير فقط)' }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-center">
+                                <button onclick="openMasterSubModal('{{ client.id }}', '{{ client.username }}', '{{ client.balance | default(0) }}', '{{ client.status }}', '{{ client.speed }}')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-5 py-2 rounded-lg transition-all text-xs font-bold shadow-md w-full sm:w-auto">
+                                    تحكم شامل ⚙️
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="packagesTab" class="tab-content hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-black text-slate-200">📦 خطط وباقات المنازل (إدارة الراوتر والأجهزة)</h2>
+            <button onclick="openPackageModal('add')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)] transition transform hover:-translate-y-0.5">
+                + إضافة باقة منازل جديدة
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for pkg in packages %}
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl shadow-xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 group flex flex-col">
+                <div class="p-6 border-b border-slate-800 bg-gradient-to-b from-[#151f32] to-[#0f172a] relative">
+                    {% if pkg.is_active %}
+                        <span class="absolute top-4 left-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">نشطة</span>
+                    {% else %}
+                        <span class="absolute top-4 left-4 bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">معطلة</span>
+                    {% endif %}
+                    <h3 class="text-xl font-black text-white mb-2 group-hover:text-blue-400 transition-colors">{{ pkg.name }}</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-emerald-400 font-mono">{{ pkg.price }}</span>
+                        <span class="text-xs text-slate-500 font-bold">EGP / {{ pkg.duration_months }} شهر</span>
+                    </div>
+                </div>
+                
+                <div class="p-6 flex-grow">
+                    <ul class="space-y-3.5 text-xs font-bold text-slate-300">
+                        <li class="flex items-center gap-3">
+                            <span class="text-amber-400 w-4 text-center">📱</span>
+                            <span>إدارة الأجهزة المسموحة: <span class="text-white">{{ pkg.max_subscribers }}</span> أجهزة</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="text-blue-500 w-4 text-center">⏱️</span>
+                            <span>مدة اشتراك التحكم: <span class="text-white">{{ pkg.duration_months }}</span> شهر</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="p-4 border-t border-slate-800 bg-[#0b111e] flex justify-between items-center mt-auto">
+                    <button onclick="deletePackage('{{ pkg.id }}')" class="flex items-center gap-1.5 px-3 py-1.5 text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg transition text-xs font-bold">
+                        حذف
+                    </button>
+                    <button onclick="openPackageModal('edit', '{{ pkg.id }}', '{{ pkg.name }}', '{{ pkg.price }}', '{{ pkg.max_subscribers }}', '{{ pkg.duration_months }}', '{{ pkg.is_active }}', '{{ pkg.notes }}')" class="flex items-center gap-1.5 px-4 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition text-xs font-bold border border-blue-600/30">
+                        تعديل الباقة
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-1 md:col-span-2 lg:col-span-3 py-16 text-center bg-[#0f172a] rounded-2xl border border-slate-800">
+                <div class="text-6xl mb-4 opacity-40">📦</div>
+                <p class="text-slate-400 font-black text-sm">لا توجد باقات منازل مضافة حتى الآن.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="masterSubModal" class="fixed inset-0 bg-black/80 hidden z-[50] justify-center items-start overflow-y-auto pt-10 pb-10 backdrop-blur-sm transition-all" dir="rtl">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-2xl w-11/12 md:w-3/4 lg:w-2/3 shadow-2xl overflow-hidden relative mt-10">
+        <div class="bg-[#151f32] p-4 border-b border-slate-700 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h2 class="text-lg font-black text-white flex items-center gap-2">
+                    <i class="fa-solid fa-home text-blue-500"></i> إدارة عميل المنزل: <span id="modalSubUsernameTitle"></span>
+                </h2>
+                <div class="flex items-center gap-3 mt-2">
+                    <span id="modalSubPackage" class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">باقة</span>
+                    <span id="modalSubStatus" class="px-2 py-0.5 rounded text-[10px] font-bold border">حالة</span>
+                </div>
+            </div>
+            <button onclick="closeMasterSubModal()" class="text-slate-400 hover:text-rose-400 text-3xl font-black focus:outline-none">&times;</button>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-rose-900/10 border border-rose-500/20 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-rose-400 mb-1">المديونية والفواتير</p>
+                        <h4 class="text-xl font-black text-rose-500" dir="ltr"><span id="modalSubDebt">0</span> EGP</h4>
+                    </div>
+                    <button onclick="triggerManualPaymentFromModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-600/20">شحن يدوي / سداد</button>
+                </div>
+                
+                <div class="bg-[#0b111e] border border-slate-700 rounded-xl p-4 flex justify-between items-center shadow-inner">
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-slate-400 mb-1">الدخول لصفحة العميل</p>
+                        <p class="text-[10px] text-slate-500">تصفح اللوحة كعميل المنزل</p>
+                    </div>
+                    <a id="btnImpersonate" href="#" class="bg-amber-600/20 hover:bg-amber-600 border border-amber-500/50 text-amber-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition">دخول كعميل 🔑</a>
+                </div>
+            </div>
+
+            <h3 class="text-sm font-black text-slate-300 border-b border-slate-700 pb-2 text-right mt-6">الإجراءات السيادية والتحكم الفني</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <button onclick="triggerSubAction('change_password')" class="bg-slate-800 hover:bg-blue-600 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">تغيير الباسوورد (Password)</button>
+                <button onclick="triggerSubAction('clear_mac')" class="bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/50 text-indigo-400 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">تصفير الماك (Clear MAC)</button>
+                <button onclick="triggerSubAction('kick')" class="bg-rose-900/40 hover:bg-rose-600 border border-rose-900 hover:border-rose-500 text-rose-400 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center">طرد الجلسة (Kick Session)</button>
+                <button onclick="triggerSubAction('toggle_status')" id="modalSubToggleBtn" class="bg-slate-800 hover:bg-amber-600 border border-slate-700 hover:border-amber-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center col-span-2 sm:col-span-1">إيقاف / تفعيل اللوحة مؤقتاً</button>
+                <button onclick="triggerSubAction('delete')" class="bg-red-950 hover:bg-red-700 border border-red-900 text-red-500 hover:text-white px-4 py-2.5 rounded-lg text-xs font-bold transition text-center col-span-2 sm:col-span-1">حذف العميل نهائياً 🗑️</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="packageModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60] p-4">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl overflow-hidden">
+        <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-[#151f32]">
+            <h3 id="modalTitle" class="text-white font-bold text-sm">إضافة باقة منازل جديدة</h3>
+            <button type="button" onclick="closePackageModal()" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <form action="{{ url_for('subscribers.save_package') }}" method="POST" class="p-6">
+            <input type="hidden" name="system_type" value="home">
+            <input type="hidden" id="pkg_id" name="package_id" value="">
+            
+            <div class="grid grid-cols-1 gap-5 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">اسم الخطة (مثال: إدارة المنزل ذكي)</label>
+                    <input type="text" id="pkg_name" name="name" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">رسوم الإدارة (EGP)</label>
+                    <input type="number" id="pkg_price" name="price" step="0.01" required class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="relative bg-[#151f32] p-3 rounded-lg border border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-amber-400 font-bold">الحد الأقصى للأجهزة المدارة بالمكان</label>
+                    </div>
+                    <input type="number" id="pkg_subs" name="max_subscribers" required placeholder="اكتب رقم..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">المدة بالشهور</label>
+                    <select id="pkg_dur" name="duration_months" class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white outline-none">
+                        <option value="1">شهر واحد</option>
+                        <option value="3">3 شهور</option>
+                        <option value="6">6 شهور</option>
+                        <option value="12">سنة كاملة</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center mt-2">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="pkg_is_active" name="is_active" value="1" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500 relative"></div>
+                        <span class="mr-3 text-slate-300 font-bold">باقة نشطة</span>
+                    </label>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1 font-bold">ملاحظات إدارية (لن تظهر للعميل)</label>
+                    <textarea id="pkg_notes" name="notes" rows="2" placeholder="اكتب أي ملاحظات تخص هذه الباقة..." class="w-full bg-[#0b111e] border border-slate-700 rounded-lg px-3 py-2 text-white resize-y outline-none"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end gap-2 border-t border-slate-800 pt-4">
+                <button type="button" onclick="closePackageModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition">إلغاء</button>
+                <button type="submit" id="btnSubmitModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow transition">حفظ الباقة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="paymentModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60]">
+    <div class="bg-[#0f172a] border border-slate-700 rounded-xl w-96 p-6">
+        <h3 class="text-white font-bold mb-4">شحن رصيد يدوي / تسديد فواتير</h3>
+        <form action="/manage/client/payment" method="POST">
+            <input type="hidden" name="client_id" id="pay_id" value="">
+            <input type="number" step="0.01" name="amount" required placeholder="المبلغ" class="w-full bg-[#0b111e] border border-slate-700 rounded p-2 text-white mb-4 font-bold text-center text-emerald-400 text-lg">
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeManualPayment()" class="px-4 py-2 bg-slate-700 text-white rounded text-sm font-bold">إلغاء</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-bold shadow-lg shadow-emerald-600/30">تنفيذ الدفع</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast-container-local" class="fixed bottom-5 left-5 z-50 space-y-2"></div>
+
+<script>
+    window.currentSubId = null;
+    window.currentSubUsername = "";
+
+    function showLocalNotification(message, type = 'success') {
+        const container = document.getElementById('toast-container-local');
+        if(!container) return;
+        const toast = document.createElement('div');
+        toast.className = `p-4 rounded-lg shadow-xl border text-xs font-bold text-white transition transform translate-y-2 duration-300 flex items-center gap-2 ${
+            type === 'success' ? 'bg-emerald-900 border-emerald-700' : 'bg-rose-900 border-rose-700'
+        }`;
+        toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> <span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.getElementById(tabId).classList.remove('hidden');
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('text-blue-400', 'border-blue-500'));
+        document.getElementById('btn-' + tabId).classList.add('text-blue-400', 'border-blue-500');
+    }
+
+    function openMasterSubModal(id, username, debt, status, packageName) {
+        window.currentSubId = id;
+        window.currentSubUsername = username;
+        window.currentSubDebt = debt;
+
+        document.getElementById('modalSubUsernameTitle').innerText = username;
+        document.getElementById('modalSubPackage').innerText = packageName || 'غير محدد';
+        document.getElementById('modalSubDebt').innerText = debt;
+        document.getElementById('btnImpersonate').href = `/impersonate/pppoe/${id}`;
+
+        const statusBadge = document.getElementById('modalSubStatus');
+        const toggleBtn = document.getElementById('modalSubToggleBtn');
+
+        if(status === 'active') {
+            statusBadge.innerText = 'نشط (اللوحة مفتوحة)';
+            statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+            toggleBtn.innerText = 'إيقاف اللوحة مؤقتاً 🛑';
+        } else {
+            statusBadge.innerText = 'موقوف (حسابات فقط)';
+            statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-500/10 text-rose-400 border-rose-500/20';
+            toggleBtn.innerText = 'تفعيل اللوحة ✅';
+        }
+
+        document.getElementById('masterSubModal').classList.remove('hidden');
+        document.getElementById('masterSubModal').classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMasterSubModal() {
+        document.getElementById('masterSubModal').classList.add('hidden');
+        document.getElementById('masterSubModal').classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    // دوال API الموحدة للإدارة المركزية
+    async function sendUnifiedAction(url, payload) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if(result.status === 'success' || result.success) {
+                showLocalNotification(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1500); 
+            } else {
+                showLocalNotification(result.message, 'error');
+            }
+        } catch (error) {
+            showLocalNotification("خطأ في الاتصال بالخادم.", 'error');
+        }
+    }
+
+    function triggerSubAction(actionType) {
+        if (!window.currentSubId) return;
+        const id = window.currentSubId;
+        const username = window.currentSubUsername;
+        const sysType = 'pppoe';
+
+        if (actionType === 'delete') {
+            if (confirm(`🚨 تحذير: سيتم حذف العميل [ ${username} ] وكل بياناته نهائياً. تأكيد؟`)) {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'delete', system: sysType });
+            }
+        }
+        else if (actionType === 'toggle_status') {
+            sendUnifiedAction('/api/client/action', { id: id, action: 'suspend', system: sysType });
+        }
+        else if (actionType === 'clear_mac') {
+            if(confirm(`هل تريد تصفير الماك للعميل [ ${username} ]؟`)) {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'clear_mac', system: sysType });
+            }
+        }
+        else if (actionType === 'kick') {
+            if(confirm(`هل تريد طرد الجلسة للعميل [ ${username} ] الآن؟`)) {
+                sendUnifiedAction('/api/sessions/kick', { username: username });
+            }
+        }
+        else if (actionType === 'change_password') {
+            const newPass = prompt(`أدخل كلمة المرور الجديدة للعميل [ ${username} ]:`);
+            if (newPass && newPass.trim() !== '') {
+                sendUnifiedAction('/api/client/action', { id: id, action: 'change_password', system: sysType, value: newPass });
+            }
+        }
+    }
+
+    function triggerManualPaymentFromModal() {
+        closeMasterSubModal();
+        openManualPayment(window.currentSubId, window.currentSubUsername, window.currentSubDebt, 0);
+    }
+
+    function openPackageModal(action, id='', name='', price='', subs='', dur='1', active='True', notes='') {
+        let title = document.getElementById('modalTitle');
+        let btnSubmit = document.getElementById('btnSubmitModal');
+
+        if(action === 'edit') {
+            title.innerText = "تعديل باقة المنازل";
+            btnSubmit.innerText = "تحديث الباقة";
+            document.getElementById('pkg_id').value = id;
+            document.getElementById('pkg_name').value = name;
+            document.getElementById('pkg_price').value = price;
+            document.getElementById('pkg_subs').value = subs;
+            document.getElementById('pkg_dur').value = dur;
+            document.getElementById('pkg_is_active').checked = (active === 'True' || active === '1');
+            document.getElementById('pkg_notes').value = notes !== 'None' ? notes : '';
+        } else {
+            title.innerText = "إضافة باقة منازل جديدة";
+            btnSubmit.innerText = "حفظ الباقة";
+            document.getElementById('pkg_id').value = '';
+            document.getElementById('pkg_name').value = '';
+            document.getElementById('pkg_price').value = '';
+            document.getElementById('pkg_subs').value = '';
+            document.getElementById('pkg_dur').value = '1';
+            document.getElementById('pkg_is_active').checked = true;
+            document.getElementById('pkg_notes').value = '';
+        }
+        document.getElementById('packageModal').classList.replace('hidden', 'flex');
+    }
+    
+    function closePackageModal() { document.getElementById('packageModal').classList.replace('flex', 'hidden'); }
+    
+    function deletePackage(id) { 
+        if(confirm("تأكيد حذف الباقة؟")) window.location.href = `/manage/package/delete/${id}`; 
+    }
+
+    function openManualPayment(id, user, debt, bal) {
+        document.getElementById('pay_id').value = id;
+        document.getElementById('paymentModal').classList.replace('hidden', 'flex');
+    }
+    function closeManualPayment() { document.getElementById('paymentModal').classList.replace('flex', 'hidden'); }
+
+    function searchSubscribers() {
+        let input = document.getElementById("subscriberSearch").value.toLowerCase();
+        document.querySelectorAll(".sub-row").forEach(row => {
+            let name = row.querySelector(".sub-name").textContent.toLowerCase();
+            row.style.display = name.includes(input) ? "" : "none";
+        });
+    }
+</script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+</style>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "portal_base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-5 pb-8">
+    
+    <div class="text-center mt-2 mb-4 relative z-10 flex flex-col items-center">
+        <h2 class="text-3xl font-black text-[#D4AF37] drop-shadow-[0_2px_10px_rgba(212,175,55,0.4)] tracking-wide mb-3">صقر كونكت باي</h2>
+        
+        <div class="flex items-center gap-3 bg-[#002366]/60 border border-[#8ECAE6]/20 rounded-full px-5 py-2 shadow-[0_0_15px_rgba(0,0,0,0.2)]">
+            {% if network_owner.logo %}
+                <img src="{{ url_for('static', filename=network_owner.logo) }}" alt="شعار الشبكة" class="w-8 h-8 rounded-full border border-[#D4AF37] object-cover">
+            {% else %}
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#eab308] flex items-center justify-center border border-[#8ECAE6]/50 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#00163d]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                </div>
+            {% endif %}
+            <span class="text-[14px] text-[#8ECAE6] font-bold">{{ network_owner.name }}</span>
+        </div>
+    </div>
+
+    <div class="glass-card rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden shadow-lg border border-[#8ECAE6]/10 bg-[#00163d]/80">
+        <div class="absolute -right-8 -top-8 w-24 h-24 bg-[#D4AF37]/10 rounded-full blur-2xl"></div>
+        <div class="w-12 h-12 rounded-full bg-[#D4AF37]/10 flex items-center justify-center shrink-0 border border-[#D4AF37]/30 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#D4AF37]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+        </div>
+        <div>
+            <h2 class="text-sm font-black text-white drop-shadow-md">مدفوعاتك آمنة.. نوفر لك طرق دفع آمنة</h2>
+            <p class="text-[10px] text-[#8ECAE6] font-bold mt-0.5">تفعيل فوري للكروت والاشتراكات</p>
+        </div>
+    </div>
+
+    <div class="glass-card rounded-2xl p-4 shadow-lg border border-[#002366]">
+        <h3 class="text-[11px] text-[#8ECAE6] font-black mb-4 text-center border-b border-[#002366] pb-2">بوابات الدفع المدعومة (مصر فقط)</h3>
+        <div class="grid grid-cols-4 gap-2">
+            <div class="flex flex-col items-center gap-2"><div class="w-11 h-11 rounded-xl bg-red-600 flex items-center justify-center shadow-md border border-red-500/50"><span class="text-white font-black text-[10px]">Voda</span></div><span class="text-[9px] font-bold text-slate-300">فودافون كاش</span></div>
+            <div class="flex flex-col items-center gap-2"><div class="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center shadow-md border border-orange-400/50"><span class="text-white font-black text-[10px]">Orange</span></div><span class="text-[9px] font-bold text-slate-300">أورنج كاش</span></div>
+            <div class="flex flex-col items-center gap-2"><div class="w-11 h-11 rounded-xl bg-purple-700 flex items-center justify-center shadow-md border border-purple-500/50"><span class="text-white font-black text-[10px]">WE</span></div><span class="text-[9px] font-bold text-slate-300">WE Pay</span></div>
+            <div class="flex flex-col items-center gap-2"><div class="w-11 h-11 rounded-xl bg-green-600 flex items-center justify-center shadow-md border border-green-500/50"><span class="text-white font-black text-[10px]">e&</span></div><span class="text-[9px] font-bold text-slate-300">e& money</span></div>
+        </div>
+    </div>
+
+    <div class="space-y-3">
+        <h3 class="text-sm font-black text-[#D4AF37] px-1">اختر كارت الشحن المناسب:</h3>
+        {% if network_cards %}
+            {% for card in network_cards %}
+            <div class="glass-card rounded-2xl p-4 flex items-center justify-between relative overflow-hidden group border border-[#002366] bg-[#00163d]/50 hover:bg-[#002366]/50 transition-colors">
+                <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#D4AF37] to-[#eab308] shadow-[0_0_10px_#D4AF37]"></div>
+                <div class="flex flex-col pr-3">
+                    <span class="text-base font-black text-white">{{ card.name }}</span>
+                    <span class="text-[10px] text-[#8ECAE6] font-bold mt-1 bg-[#002366] px-2 py-0.5 rounded border border-[#8ECAE6]/20 w-max">{{ card.description }}</span>
+                </div>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                    <span class="text-xl font-black text-[#D4AF37]">{{ card.price }} <span class="text-[10px] text-slate-400">ج.م</span></span>
+                    <button onclick="openPaymentModal('{{ card.id }}', '{{ card.price }}')" class="bg-gradient-to-r from-[#D4AF37] to-[#eab308] text-[#00163d] text-[10px] font-black py-1.5 px-5 rounded-lg shadow-[0_0_10px_rgba(212,175,55,0.3)] hover:scale-105 transition-transform">شراء الكارت</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-8 glass-card rounded-2xl border border-[#002366]"><p class="text-xs text-[#8ECAE6] font-bold">لا توجد كروت متاحة حالياً.</p></div>
+        {% endif %}
+    </div>
+
+    <div class="mt-4 text-center">
+        <button onclick="openLoginModal()" class="w-full inline-flex items-center justify-center gap-2 text-sm font-black text-[#00163d] bg-gradient-to-r from-[#8ECAE6] to-[#38bdf8] hover:from-[#38bdf8] hover:to-[#0284c7] transition-colors px-6 py-4 rounded-xl shadow-[0_4px_15px_rgba(142,202,230,0.3)] border border-[#8ECAE6]/50">
+            تسجيل الدخول (بوابة الإدارة والمستخدمين)
+        </button>
+    </div>
+
+    <div class="mt-6 text-center border-t border-[#002366] pt-5">
+        <p class="text-[12px] text-[#8ECAE6] font-black">Sakr Connect Pay</p>
+        <p class="text-[10px] text-slate-400 mt-1 font-bold">Developed & Engineered by: Sakr Media Agency</p>
+        <p class="text-[10px] text-slate-500 mt-1 font-bold">Server: {% if global_settings %}{{ global_settings.server_name }}{% else %}Central Node{% endif %}</p>
+    </div>
+</div>
+
+<div id="paymentModal" class="fixed inset-0 bg-[#0f172a]/95 backdrop-blur-md z-50 hidden flex-col justify-end lg:justify-center items-center lg:p-4">
+    <div class="bg-[#00163d] w-full max-w-md rounded-t-3xl lg:rounded-2xl border-t-2 border-[#D4AF37] p-6 transform translate-y-full transition-transform duration-300 shadow-[0_-10px_40px_rgba(0,35,102,0.5)]" id="modalContent">
+        <div class="flex justify-between items-center mb-5 border-b border-[#002366] pb-3">
+            <h3 class="text-sm font-black text-[#D4AF37]">تأكيد الشراء</h3>
+            <button onclick="closePaymentModal()" class="text-[#8ECAE6] hover:text-rose-500 bg-[#002366] p-1.5 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <form action="{{ url_for('process_fast_purchase') }}" method="POST" class="space-y-5">
+            <input type="hidden" name="card_id" id="modalCardId">
+            <div class="bg-[#002366] border border-[#D4AF37]/30 rounded-xl p-4 text-center shadow-inner">
+                <p class="text-[11px] text-[#8ECAE6] font-bold mb-1">المبلغ المطلوب تحويله</p>
+                <p class="text-3xl font-black text-[#D4AF37]" id="modalPrice">0 <span class="text-sm text-[#8ECAE6]">ج.م</span></p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-[#8ECAE6] mb-2">رقم الكاش المحول منه:</label>
+                <input type="tel" name="cash_number" required placeholder="010xxxxxxxx" pattern="^01[0-2,5]{1}[0-9]{8}$" class="w-full bg-[#00163d] border-2 border-[#002366] focus:border-[#D4AF37] rounded-xl px-4 py-3 text-white font-black text-center focus:outline-none transition-colors shadow-inner" dir="ltr" autocomplete="off">
+            </div>
+            <button type="submit" class="w-full bg-gradient-to-r from-[#D4AF37] to-[#eab308] text-[#00163d] font-black py-3.5 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:scale-[1.02] transition-transform">تأكيد واستلام كود التفعيل</button>
+        </form>
+    </div>
+</div>
+
+<div id="loginModal" class="fixed inset-0 bg-[#0f172a]/95 backdrop-blur-md z-50 hidden flex-col justify-end lg:justify-center items-center lg:p-4">
+    <div class="bg-[#00163d] w-full max-w-md rounded-t-3xl lg:rounded-2xl border-t-2 border-[#8ECAE6] p-6 transform translate-y-full transition-transform duration-300 shadow-[0_-10px_40px_rgba(142,202,230,0.2)]" id="loginModalContent">
+        <div class="flex justify-between items-center mb-6 border-b border-[#002366] pb-3">
+            <h3 class="text-lg font-black text-[#8ECAE6]">تسجيل الدخول</h3>
+            <button onclick="closeLoginModal()" class="text-[#D4AF37] hover:text-rose-500 bg-[#002366] p-1.5 rounded-full transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <form action="{{ url_for('auth.login') }}" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-[#D4AF37] mb-2">رقم الهاتف أو اسم المستخدم:</label>
+                <input type="text" name="login_id" required placeholder="أدخل بياناتك هنا..." class="w-full bg-[#002366] border border-[#8ECAE6]/30 focus:border-[#D4AF37] rounded-xl px-4 py-3 text-white font-bold text-center focus:outline-none transition-colors shadow-inner" dir="rtl">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-[#D4AF37] mb-2">كلمة المرور:</label>
+                <input type="password" name="password" required placeholder="••••••••" class="w-full bg-[#002366] border border-[#8ECAE6]/30 focus:border-[#D4AF37] rounded-xl px-4 py-3 text-white font-bold text-center focus:outline-none transition-colors shadow-inner" dir="ltr">
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-4">
+                <button type="submit" name="role" value="subscriber" class="bg-gradient-to-r from-[#8ECAE6] to-[#0284c7] text-[#00163d] font-black py-3 rounded-xl shadow-[0_4px_10px_rgba(142,202,230,0.3)] hover:scale-[1.02] transition-transform">دخول مشترك</button>
+                <button type="submit" name="role" value="reseller" class="bg-gradient-to-r from-[#D4AF37] to-[#eab308] text-[#00163d] font-black py-3 rounded-xl shadow-[0_4px_10px_rgba(212,175,55,0.3)] hover:scale-[1.02] transition-transform">دخول موزع</button>
+                <button type="submit" name="role" value="admin" class="bg-gradient-to-r from-emerald-400 to-emerald-600 text-[#00163d] font-black py-3 rounded-xl shadow-[0_4px_10px_rgba(52,211,153,0.3)] hover:scale-[1.02] transition-transform">إدارة الشبكة</button>
+                <button type="submit" name="role" value="super_admin" class="bg-gradient-to-r from-rose-400 to-rose-600 text-white font-black py-3 rounded-xl shadow-[0_4px_10px_rgba(251,113,133,0.3)] hover:scale-[1.02] transition-transform">الإدارة العليا</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openPaymentModal(cardId, price) {
+        document.getElementById('modalCardId').value = cardId;
+        document.getElementById('modalPrice').innerHTML = price + ' <span class="text-sm text-[#8ECAE6]">ج.م</span>';
+        const modal = document.getElementById('paymentModal');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        requestAnimationFrame(() => document.getElementById('modalContent').classList.remove('translate-y-full'));
+    }
+    function closePaymentModal() {
+        document.getElementById('modalContent').classList.add('translate-y-full');
+        setTimeout(() => {
+            const modal = document.getElementById('paymentModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }, 300);
+    }
+    function openLoginModal() {
+        const modal = document.getElementById('loginModal');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        requestAnimationFrame(() => document.getElementById('loginModalContent').classList.remove('translate-y-full'));
+    }
+    function closeLoginModal() {
+        document.getElementById('loginModalContent').classList.add('translate-y-full');
+        setTimeout(() => {
+            const modal = document.getElementById('loginModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }, 300);
+    }
+</script>
+{% endblock %}

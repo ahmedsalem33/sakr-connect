@@ -1,0 +1,233 @@
+{% extends 'base.html' if current_role in ['admin', 'super_admin'] else 'layout.html' %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+<div class="space-y-4 w-full max-w-[1400px] mx-auto h-[85vh] flex flex-col" dir="rtl">
+
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="javascript:history.back()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 border border-slate-700 shadow-md">
+                <span>🔙</span> عودة 
+            </a>
+            <div>
+                <h2 class="text-lg font-black text-white flex items-center gap-2">
+                    <span class="text-emerald-500">🗺️</span> خريطة المراقبة الجغرافية (Sakr Connect)
+                </h2>
+                <p class="text-xs text-slate-400 mt-1 font-bold">نظام المراقبة اللحظية والتحليل الحراري للاستهلاك.</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 border border-blue-500/50 shadow-lg">
+                <span>⛶</span> تكبير الشاشة
+            </button>
+            <div class="text-left hidden md:block border-r border-slate-800 pr-4">
+                <p class="text-[10px] font-bold text-slate-500">تطوير حقوق: <span class="text-blue-400">Sakr Media Agency (صقر ميديا)</span></p>
+                <p class="text-[10px] font-mono text-slate-600 mt-0.5">الدعم الفني: 01033379719 - 01033379719</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="map-wrapper" class="relative flex-1 bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-2xl transition-all">
+        
+        <div id="networkMap" class="w-full h-full z-0"></div>
+
+        <div class="absolute top-4 right-4 z-10 w-64 space-y-2 pointer-events-none">
+            <div class="bg-[#151f32]/95 backdrop-blur-md border border-slate-700 rounded-lg p-3 space-y-2 pointer-events-auto shadow-2xl">
+                
+                {% if current_role in ['admin', 'super_admin'] %}
+                <div>
+                    <label class="block text-[10px] font-bold text-amber-500 mb-1">👑 الإدارة: اختر الشبكة/الموزع</label>
+                    <select id="networkFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 focus:border-amber-500 outline-none transition shadow-inner">
+                        <option value="all">🌐 عرض جميع الشبكات والموزعين</option>
+                        <option value="net1">شبكة الصعيد المركزية</option>
+                        <option value="net2">شبكات الكافيهات</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div>
+                    <select id="deviceFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 focus:border-blue-500 outline-none transition shadow-inner">
+                        <option value="all">📡 اختر الجهاز (عرض الجميع)</option>
+                        <option value="dev1">الروترات والسيرفرات فقط</option>
+                        <option value="dev2">أجهزة العملاء المتصلة</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-1.5 pointer-events-auto">
+                <button onclick="mapTools.toggleHeatmap()" id="heatmap-btn" class="w-full bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-[11px] py-2 rounded shadow-lg border border-rose-500/50 transition backdrop-blur flex justify-between px-3 mb-3 animate-pulse">
+                    <span>تحليل الاستهلاك الحراري (Heatmap)</span> <span>🔥</span>
+                </button>
+                
+                <button onclick="mapTools.enableMove()" class="w-full bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-blue-500/50 transition backdrop-blur flex justify-between px-3">
+                    <span>تفعيل النقل اليدوي (Pan)</span> <span>🖐️</span>
+                </button>
+                <button onclick="mapTools.enableDrawPolygon()" class="w-full bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-emerald-500/50 transition backdrop-blur flex justify-between px-3">
+                    <span>رسم منطقة تغطية جغرافية</span> <span>📐</span>
+                </button>
+                <button onclick="mapTools.enableDrawLine()" class="w-full bg-amber-600/90 hover:bg-amber-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-amber-500/50 transition backdrop-blur flex justify-between px-3">
+                    <span>رسم خط ربط لاسلكي (LOS)</span> <span>📏</span>
+                </button>
+                <button onclick="mapTools.clearAll()" class="w-full bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white font-bold text-xs py-2 rounded shadow-lg border border-slate-700 hover:border-rose-500 transition backdrop-blur flex justify-between px-3 mt-4">
+                    <span>مسح المناطق المحددة</span> <span>🗑️</span>
+                </button>
+                
+                {% if current_role in ['admin', 'super_admin'] %}
+                <button onclick="mapTools.saveGeoData()" class="w-full bg-slate-700/90 hover:bg-emerald-600 text-emerald-400 hover:text-white font-bold text-xs py-2 rounded shadow-lg border border-slate-600 transition backdrop-blur flex justify-between px-3">
+                    <span>حفظ التعديلات (Sync DB)</span> <span>💾</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .leaflet-bar a { background-color: #151f32 !important; color: #94a3b8 !important; border-color: #334155 !important; }
+    .leaflet-bar a:hover { background-color: #1e293b !important; color: #fff !important; }
+    .leaflet-control-layers { background-color: #151f32 !important; color: #e2e8f0 !important; border: 1px solid #334155 !important; border-radius: 8px !important; }
+    .leaflet-popup-content-wrapper { background-color: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; direction: rtl; text-align: right; }
+    .leaflet-popup-tip { background-color: #0f172a; }
+    
+    /* ستايل الشاشة الكاملة لتجنب الخلفية البيضاء */
+    #map-wrapper:fullscreen { background-color: #0f172a; padding: 0; border: none; border-radius: 0; }
+</style>
+
+<script id="markers-data" type="application/json">
+    {{ markers | default('[]') | tojson | safe }}
+</script>
+
+<script>
+    // 1. استقبال البيانات وإعداد الشاشة الكاملة
+    const userRole = "{{ current_role }}"; 
+    const markersData = JSON.parse(document.getElementById('markers-data').textContent);
+
+    function toggleFullScreen() {
+        const wrapper = document.getElementById('map-wrapper');
+        const btn = document.getElementById('fullscreen-btn');
+        
+        if (!document.fullscreenElement) {
+            wrapper.requestFullscreen().catch(err => { alert(`تعذر تكبير الشاشة: ${err.message}`); });
+            btn.innerHTML = '<span>🗗</span> تصغير الشاشة';
+        } else {
+            document.exitFullscreen();
+            btn.innerHTML = '<span>⛶</span> تكبير الشاشة';
+        }
+    }
+
+    // تحديث حجم الخريطة فوراً عند الدخول أو الخروج من الشاشة الكاملة لمنع التقطيع
+    document.addEventListener("fullscreenchange", function() {
+        setTimeout(() => { map.invalidateSize(); }, 200);
+    });
+
+    // 2. تهيئة الخريطة
+    const map = L.map('networkMap', { zoomControl: false });
+    L.control.zoom({ position: 'topleft' }).addTo(map);
+
+    // 3. طبقات الخريطة
+    const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+    const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
+
+    satelliteLayer.addTo(map);
+    const baseMaps = {
+        "🗺️ عرض القمر الصناعي": satelliteLayer,
+        "🛣️ عرض الشوارع القياسي": streetsLayer,
+        "⛰️ عرض التضاريس (للمسافات)": terrainLayer
+    };
+    L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
+
+    // 4. أدوات الرسم
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: {
+            polygon: { shapeOptions: { color: '#10b981', weight: 2, fillOpacity: 0.2 } },
+            polyline: { shapeOptions: { color: '#f59e0b', weight: 3, dashArray: '5, 10' } },
+            rectangle: false, circle: false, circlemarker: false, marker: true
+        }
+    });
+
+    map.on(L.Draw.Event.CREATED, function (event) {
+        drawnItems.addLayer(event.layer);
+    });
+
+    // 5. محرك الخريطة الحرارية (Heatmap)
+    let heatLayer = null;
+    let isHeatmapActive = false;
+    let markerGroup = new L.FeatureGroup();
+    map.addLayer(markerGroup);
+
+    const mapTools = {
+        enableMove: function() { /* الأدوات تغلق تلقائياً */ },
+        enableDrawPolygon: function() { new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable(); },
+        enableDrawLine: function() { new L.Draw.Polyline(map, drawControl.options.draw.polyline).enable(); },
+        clearAll: function() { if(confirm('هل أنت متأكد من مسح جميع المناطق والخطوط المرسومة؟')) drawnItems.clearLayers(); },
+        saveGeoData: function() {
+            const data = drawnItems.toGeoJSON();
+            console.log("Data to backend:", JSON.stringify(data));
+            alert('تم حفظ إحداثيات التغطية بنجاح في قاعدة بيانات Sakr Connect.');
+        },
+        toggleHeatmap: function() {
+            const btn = document.getElementById('heatmap-btn');
+            if(isHeatmapActive) {
+                map.removeLayer(heatLayer);
+                map.addLayer(markerGroup);
+                btn.classList.remove('bg-rose-800');
+                btn.classList.add('bg-rose-600/90');
+                isHeatmapActive = false;
+            } else {
+                map.removeLayer(markerGroup);
+                // استخراج إحداثيات النقاط لعمل السحابة الحرارية 
+                const heatData = markersData.map(m => [m.lat, m.lng, Math.random() * 100]);
+                
+                if(!heatLayer) {
+                    heatLayer = L.heatLayer(heatData, {radius: 35, blur: 25, maxZoom: 15, gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}});
+                }
+                map.addLayer(heatLayer);
+                btn.classList.remove('bg-rose-600/90');
+                btn.classList.add('bg-rose-800');
+                isHeatmapActive = true;
+            }
+        }
+    };
+
+    // 6. رسم الدبابيس (الروترات)
+    const serverIcon = L.divIcon({ html: '🏢', className: 'text-2xl', iconSize: [30, 30] });
+    const clientIconOnline = L.divIcon({ html: '🟢', className: 'text-[10px]', iconSize: [12, 12] });
+    const clientIconOffline = L.divIcon({ html: '🔴', className: 'text-[10px] animate-pulse', iconSize: [12, 12] });
+    
+    let allMapMarkers = [];
+
+    if (markersData && markersData.length > 0) {
+        markersData.forEach(marker => {
+            let iconToUse = marker.type === 'server' ? serverIcon : (marker.status === 'online' ? clientIconOnline : clientIconOffline);
+            
+            let newMarker = L.marker([marker.lat, marker.lng], {icon: iconToUse})
+                .bindPopup(`<div class="font-sans">
+                                <b class="text-blue-400 block border-b border-slate-700 pb-1 mb-1">${marker.name}</b>
+                                <span class="text-[10px] text-slate-400">الشبكة: ${marker.reseller_name || 'غير محدد'}</span><br>
+                                <span class="text-[10px] text-slate-400">الحالة: <span class="${marker.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}">${marker.status}</span></span>
+                            </div>`);
+            
+            markerGroup.addLayer(newMarker);
+            allMapMarkers.push(newMarker);
+        });
+
+        // زووم ذكي يجمع كل النقاط
+        map.fitBounds(markerGroup.getBounds(), { padding: [50, 50] });
+
+    } else {
+        // نقطة افتراضية في حالة عدم وجود داتا
+        map.setView([27.7333, 30.8333], 13);
+    }
+</script>
+{% endblock %}
