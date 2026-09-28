@@ -290,7 +290,9 @@ def index():
     user_role = session.get('role')
     
     if user_role in ['admin', 'super_admin']:
-        return render_template('index.html', project_name="Sakr Connect")
+        from core.central_stats import build_central_stats
+        return render_template('index.html', project_name="Sakr Connect",
+                               central_stats=build_central_stats())
     else:
         return redirect(url_for('auth.dashboard'))
 
