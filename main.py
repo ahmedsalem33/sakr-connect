@@ -285,7 +285,7 @@ def api_broadcast():
 @app.route('/')
 def index():
     if 'user_id' not in session:
-        return redirect('/sakr')
+        return redirect(os.environ.get('SAKR_LANDING_PAGE', '/sakr'))
     
     user_role = session.get('role')
     
