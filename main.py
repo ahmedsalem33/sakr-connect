@@ -236,12 +236,24 @@ def inject_global_data():
             pass
 
     # تمرير متغيرات القفل والفترة التجريبية بشكل مركزي لجميع قوالب الـ HTML تلقائياً
+    # + إحصائيات اللوحة الحية لأي قالب يرث من index.html (تُحسب لغير API فقط)
+    central_stats = None
+    try:
+        if not request.path.startswith('/api/'):
+            if '_central_stats' not in g:
+                from core.central_stats import build_central_stats
+                g._central_stats = build_central_stats()
+            central_stats = g._central_stats
+    except Exception:
+        pass
+
     return dict(
         current_role=current_role,
         global_broadcast=broadcast_text,
         radar_logs=radar_logs,
         is_locked=getattr(g, 'is_locked', False),
-        is_trial_active=getattr(g, 'is_trial_active', True)
+        is_trial_active=getattr(g, 'is_trial_active', True),
+        central_stats=central_stats
     )
 
 def requires_roles(*roles):
