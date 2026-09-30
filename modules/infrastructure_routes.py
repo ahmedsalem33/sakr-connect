@@ -82,34 +82,153 @@ def _build_line(router, budget, capacity=None):
 def routers_map():
     role = session.get('role')
     user_id = session.get('user_id')
-    
-    if role not in ['admin', 'super_admin', 'network']:
+
+    if role not in ['admin', 'super_admin', 'network', 'cafe']:
         abort(403)
-        
+
     markers = []
-    
+    networks_list = []
+    sessions_by_router = {}
+    try:
+        from sqlalchemy import func as _safunc
+        for _rid, _c in db.query(ActiveSession.router_id,
+                                 _safunc.count(ActiveSession.id)
+                                 ).group_by(ActiveSession.router_id).all():
+            if _rid:
+                sessions_by_router[_rid] = int(_c or 0)
+    except Exception:
+        pass
+
     if role in ['admin', 'super_admin']:
         routers = db.query(Router).filter_by(is_deleted=False).all()
+        try:
+            for _net in db.query(Network).all():
+                _rc = db.query(Router).filter_by(network_id=_net.id, is_deleted=False).count()
+                _sc = db_session_count(_net.id)
+                networks_list.append({'id': _net.id, 'name': _net.name,
+                                      'routers': _rc, 'subscribers': _sc})
+        except Exception:
+            pass
     else:
+        owner_id = user_id
+        try:
+            _u = db.query(User).filter_by(id=user_id).first()
+            if _u and _u.role in ['reseller', 'manager'] and _u.parent_id:
+                owner_id = _u.parent_id
+        except Exception:
+            pass
         routers = db.query(Router).join(Network).filter(
-            Network.owner_id == user_id, 
+            Network.owner_id == owner_id,
             Router.is_deleted == False
         ).all()
-        
+
     for r in routers:
-        # استخدام getattr كحماية برمجية مع إحداثيات افتراضية لمدينة ملوي في حالة عدم وجود الداتا
+        _lat = getattr(r, 'latitude', None)
+        _lng = getattr(r, 'longitude', None)
         markers.append({
             "id": r.id,
             "name": r.name,
-            "lat": getattr(r, 'latitude', 27.7333), 
-            "lng": getattr(r, 'longitude', 30.8333),
+            "lat": float(_lat) if _lat is not None else None,
+            "lng": float(_lng) if _lng is not None else None,
+            "has_coords": _lat is not None and _lng is not None,
             "reseller_id": r.network.owner_id if r.network else 0,
             "reseller_name": r.network.name if r.network else "غير محدد",
             "type": "server",
-            "status": r.status
+            "status": r.status or 'offline',
+            "sessions": sessions_by_router.get(r.id, 0),
+            "ip": r.ip_address or '',
         })
-        
-    return render_template('routers_map.html', markers=markers, current_role=role, project_name="Sakr Connect")
+
+    # مركز البداية حسب دولة المستخدم (مصر افتراضياً)
+    _country = (session.get('country') or 'EG').upper()
+    _centers = {
+        'EG': [30.0444, 31.2357, 6],
+        'SA': [24.7136, 46.6753, 5],
+        'AE': [24.4539, 54.3773, 6],
+        'QA': [25.2854, 51.5310, 7],
+        'KW': [29.3759, 47.9774, 6],
+        'BH': [26.0275, 50.5500, 7],
+        'OM': [23.5880, 58.3829, 6],
+        'JO': [31.9539, 35.9106, 7],
+        'IQ': [33.3152, 44.3661, 6],
+        'LY': [32.8872, 13.1913, 6],
+        'SD': [15.5007, 32.5599, 5],
+        'YE': [15.3694, 44.1910, 6],
+        'SY': [33.5138, 36.2765, 6],
+        'LB': [33.8938, 35.5018, 7],
+        'PS': [31.9522, 35.2332, 7],
+        'TN': [36.8065, 10.1815, 6],
+        'DZ': [36.7538, 3.0588, 6],
+        'MA': [33.5731, -7.5898, 6],
+        'MR': [18.0858, -15.9785, 5],
+    }
+    _center = _centers.get(_country, [25.0, 15.0, 2])
+
+    return render_template('routers_map.html', markers=markers,
+                           networks_list=networks_list,
+                           map_center=_center,
+                           heat_data=[[m['lat'], m['lng'], m['sessions']] for m in markers if m['has_coords']],
+                           current_role=role, project_name="Sakr Connect")
+
+
+def db_session_count(network_id):
+    try:
+        return db.query(Subscriber).filter_by(network_id=network_id).count()
+    except Exception:
+        return 0
+
+
+@infrastructure_bp.route('/routers/map/save', methods=['POST'])
+def save_router_coords():
+    role = session.get('role')
+    user_id = session.get('user_id')
+    if role not in ['admin', 'super_admin', 'network', 'cafe']:
+        abort(403)
+    try:
+        data = request.get_json(force=True) or {}
+    except Exception:
+        return jsonify({"status": "error", "message": "بيانات غير صالحة"}), 400
+
+    owner_id = user_id
+    try:
+        _u = db.query(User).filter_by(id=user_id).first()
+        if _u and _u.role in ['reseller', 'manager'] and _u.parent_id:
+            owner_id = _u.parent_id
+    except Exception:
+        pass
+
+    saved = 0
+    items = data.get('routers', data) if isinstance(data, dict) else []
+    if isinstance(items, dict):
+        items = [{'id': _k, 'lat': _v.get('lat'), 'lng': _v.get('lng')} if isinstance(_v, dict) else {}
+                 for _k, _v in items.items()]
+    for _it in items:
+        try:
+            _rid = int(_it.get('id'))
+            _lat = float(_it.get('lat'))
+            _lng = float(_it.get('lng'))
+        except Exception:
+            continue
+        if not (-90 <= _lat <= 90 and -180 <= _lng <= 180):
+            continue
+        _r = db.query(Router).filter_by(id=_rid, is_deleted=False).first()
+        if not _r:
+            continue
+        if role not in ['admin', 'super_admin']:
+            try:
+                if not _r.network or _r.network.owner_id != owner_id:
+                    continue
+            except Exception:
+                continue
+        _r.latitude = _lat
+        _r.longitude = _lng
+        saved += 1
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "success", "saved": saved})
 
 # ==========================================
 # 2. إعدادات ومراقبة المايكروتيك (تم حل مشكلة الـ UndefinedError)

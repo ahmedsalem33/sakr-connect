@@ -23,7 +23,7 @@ def user_support():
     user_type = session.get('role') # 'home', 'cafe', أو 'network'
     
     if not user_id:
-        return redirect(url_for('dev_login', role='home'))
+        return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
         # استقبال طلب فتح تذكرة جديدة من العميل
@@ -64,7 +64,7 @@ def view_ticket_user(ticket_id):
     user_type = session.get('role')
     
     if not user_id:
-        return redirect(url_for('dev_login', role='home'))
+        return redirect(url_for('auth.login'))
         
     ticket = db_session.query(Ticket).filter_by(id=ticket_id, user_id=user_id, user_type=user_type).first()
     if not ticket:

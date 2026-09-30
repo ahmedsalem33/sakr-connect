@@ -151,6 +151,10 @@ class Router(Base):
     status = Column(String(20), default='offline')
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # إحداثيات الخريطة (تُضبط بالسحب من لوحة الخريطة)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     
     ztp_token = Column(String(100), unique=True, nullable=True, index=True)
     is_provisioned = Column(Boolean, default=False)

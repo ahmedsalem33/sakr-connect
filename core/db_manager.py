@@ -75,6 +75,16 @@ def init_db():
             if 'max_subscribers' not in pkg_columns:
                 connection.execute(text("ALTER TABLE saas_packages ADD COLUMN max_subscribers INTEGER DEFAULT 0;"))
             
+            # تحديث هيكل جدول الروترات (إحداثيات الخريطة)
+            try:
+                router_columns = [col['name'] for col in inspector.get_columns('routers')]
+                if 'latitude' not in router_columns:
+                    connection.execute(text("ALTER TABLE routers ADD COLUMN latitude FLOAT;"))
+                if 'longitude' not in router_columns:
+                    connection.execute(text("ALTER TABLE routers ADD COLUMN longitude FLOAT;"))
+            except Exception as _e:
+                logger.warning("router geo migration skipped: {}".format(_e))
+
             # --- تأسيس جسور الاتصال المباشر مع الراديوس (Radius Integration) ---
             # فيو التحقق (radcheck)
             connection.execute(text("""

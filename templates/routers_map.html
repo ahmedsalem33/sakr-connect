@@ -2,87 +2,57 @@
 
 {% block content %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
-<div class="space-y-4 w-full max-w-[1400px] mx-auto h-[85vh] flex flex-col" dir="rtl">
+<div class="space-y-4 w-full max-w-[1400px] mx-auto" dir="rtl">
 
-    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex justify-between items-center shrink-0">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex justify-between items-center flex-wrap gap-3">
         <div class="flex items-center gap-4">
             <a href="javascript:history.back()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 border border-slate-700 shadow-md">
-                <span>🔙</span> عودة 
+                <span>🔙</span> عودة
             </a>
             <div>
                 <h2 class="text-lg font-black text-white flex items-center gap-2">
-                    <span class="text-emerald-500">🗺️</span> خريطة المراقبة الجغرافية (Sakr Connect)
+                    <span class="text-emerald-500">🗺️</span> خريطة الشبكات والروترات
                 </h2>
-                <p class="text-xs text-slate-400 mt-1 font-bold">نظام المراقبة اللحظية والتحليل الحراري للاستهلاك.</p>
+                <p class="text-xs text-slate-400 mt-1 font-bold">اسحب أي دبوس لمكانه الحقيقي في الشارع ثم احفظ. البيانات حية 100%.</p>
             </div>
         </div>
-        
-        <div class="flex items-center gap-4">
-            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg text-xs font-black transition flex items-center gap-2 border border-blue-500/50 shadow-lg">
-                <span>⛶</span> تكبير الشاشة
-            </button>
-            <div class="text-left hidden md:block border-r border-slate-800 pr-4">
-                <p class="text-[10px] font-bold text-slate-500">تطوير حقوق: <span class="text-blue-400">Sakr Media Agency (صقر ميديا)</span></p>
-                <p class="text-[10px] font-mono text-slate-600 mt-0.5">الدعم الفني: 01033379719 - 01033379719</p>
-            </div>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg text-xs font-black transition border border-blue-500/50">⛶ تكبير الشاشة</button>
+            <button onclick="saveGeoData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-black transition shadow-lg">💾 حفظ الإحداثيات</button>
         </div>
     </div>
 
-    <div id="map-wrapper" class="relative flex-1 bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-2xl transition-all">
-        
-        <div id="networkMap" class="w-full h-full z-0"></div>
-
-        <div class="absolute top-4 right-4 z-10 w-64 space-y-2 pointer-events-none">
-            <div class="bg-[#151f32]/95 backdrop-blur-md border border-slate-700 rounded-lg p-3 space-y-2 pointer-events-auto shadow-2xl">
-                
-                {% if current_role in ['admin', 'super_admin'] %}
-                <div>
-                    <label class="block text-[10px] font-bold text-amber-500 mb-1">👑 الإدارة: اختر الشبكة/الموزع</label>
-                    <select id="networkFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 focus:border-amber-500 outline-none transition shadow-inner">
-                        <option value="all">🌐 عرض جميع الشبكات والموزعين</option>
-                        <option value="net1">شبكة الصعيد المركزية</option>
-                        <option value="net2">شبكات الكافيهات</option>
-                    </select>
-                </div>
-                {% endif %}
-
-                <div>
-                    <select id="deviceFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 focus:border-blue-500 outline-none transition shadow-inner">
-                        <option value="all">📡 اختر الجهاز (عرض الجميع)</option>
-                        <option value="dev1">الروترات والسيرفرات فقط</option>
-                        <option value="dev2">أجهزة العملاء المتصلة</option>
-                    </select>
-                </div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
+            {% if current_role in ['admin', 'super_admin'] %}
+            <div>
+                <label class="block text-[11px] font-bold text-amber-500 mb-1">👑 كل الشبكات ({{ networks_list|length }})</label>
+                <select id="networkFilter" onchange="filterByNetwork(this.value)" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-2 outline-none">
+                    <option value="all">🌐 عرض الجميع</option>
+                    {% for net in networks_list %}
+                    <option value="{{ net.id }}">{{ net.name }} ({{ net.routers }} روتر / {{ net.subscribers }} مشترك)</option>
+                    {% endfor %}
+                </select>
             </div>
+            {% endif %}
+            <div class="text-[11px] text-slate-400 font-bold border-t border-slate-800 pt-2">
+                <div>📡 الروترات: <span id="stat-routers" class="text-white font-mono">0</span></div>
+                <div>🟢 المتصلة: <span id="stat-online" class="text-emerald-400 font-mono">0</span></div>
+                <div>⚪ بدون إحداثيات: <span id="stat-unset" class="text-amber-400 font-mono">0</span></div>
+                <div>👥 جلسات نشطة: <span id="stat-sessions" class="text-sky-400 font-mono">0</span></div>
+            </div>
+            <div>
+                <button onclick="toggleHeatmap()" id="heatmap-btn" class="w-full bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-[11px] py-2 rounded transition">🔥 خريطة الكثافة (جلسات حقيقية)</button>
+            </div>
+            <p class="text-[10px] text-slate-500">النقاط الحمراء النابضة = روترات بدون موقع. اسحبها لمكانها ثم احفظ.</p>
+        </div>
 
-            <div class="space-y-1.5 pointer-events-auto">
-                <button onclick="mapTools.toggleHeatmap()" id="heatmap-btn" class="w-full bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-[11px] py-2 rounded shadow-lg border border-rose-500/50 transition backdrop-blur flex justify-between px-3 mb-3 animate-pulse">
-                    <span>تحليل الاستهلاك الحراري (Heatmap)</span> <span>🔥</span>
-                </button>
-                
-                <button onclick="mapTools.enableMove()" class="w-full bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-blue-500/50 transition backdrop-blur flex justify-between px-3">
-                    <span>تفعيل النقل اليدوي (Pan)</span> <span>🖐️</span>
-                </button>
-                <button onclick="mapTools.enableDrawPolygon()" class="w-full bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-emerald-500/50 transition backdrop-blur flex justify-between px-3">
-                    <span>رسم منطقة تغطية جغرافية</span> <span>📐</span>
-                </button>
-                <button onclick="mapTools.enableDrawLine()" class="w-full bg-amber-600/90 hover:bg-amber-500 text-white font-bold text-xs py-2 rounded shadow-lg border border-amber-500/50 transition backdrop-blur flex justify-between px-3">
-                    <span>رسم خط ربط لاسلكي (LOS)</span> <span>📏</span>
-                </button>
-                <button onclick="mapTools.clearAll()" class="w-full bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white font-bold text-xs py-2 rounded shadow-lg border border-slate-700 hover:border-rose-500 transition backdrop-blur flex justify-between px-3 mt-4">
-                    <span>مسح المناطق المحددة</span> <span>🗑️</span>
-                </button>
-                
-                {% if current_role in ['admin', 'super_admin'] %}
-                <button onclick="mapTools.saveGeoData()" class="w-full bg-slate-700/90 hover:bg-emerald-600 text-emerald-400 hover:text-white font-bold text-xs py-2 rounded shadow-lg border border-slate-600 transition backdrop-blur flex justify-between px-3">
-                    <span>حفظ التعديلات (Sync DB)</span> <span>💾</span>
-                </button>
-                {% endif %}
+        <div class="lg:col-span-3">
+            <div id="map-wrapper" class="relative bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-2xl" style="height: 70vh; min-height: 480px;">
+                <div id="networkMap" class="w-full h-full z-0"></div>
             </div>
         </div>
     </div>
@@ -90,144 +60,141 @@
 
 <style>
     .leaflet-bar a { background-color: #151f32 !important; color: #94a3b8 !important; border-color: #334155 !important; }
-    .leaflet-bar a:hover { background-color: #1e293b !important; color: #fff !important; }
-    .leaflet-control-layers { background-color: #151f32 !important; color: #e2e8f0 !important; border: 1px solid #334155 !important; border-radius: 8px !important; }
     .leaflet-popup-content-wrapper { background-color: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; direction: rtl; text-align: right; }
     .leaflet-popup-tip { background-color: #0f172a; }
-    
-    /* ستايل الشاشة الكاملة لتجنب الخلفية البيضاء */
     #map-wrapper:fullscreen { background-color: #0f172a; padding: 0; border: none; border-radius: 0; }
+    @keyframes pulse-red { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .unset-marker { animation: pulse-red 1.5s infinite; }
 </style>
 
 <script id="markers-data" type="application/json">
     {{ markers | default('[]') | tojson | safe }}
 </script>
+<script id="heat-data" type="application/json">
+    {{ heat_data | default('[]') | tojson | safe }}
+</script>
+<script id="map-center" type="application/json">
+    {{ map_center | default('[30.0444, 31.2357, 6]') | tojson | safe }}
+</script>
 
 <script>
-    // 1. استقبال البيانات وإعداد الشاشة الكاملة
-    const userRole = "{{ current_role }}"; 
     const markersData = JSON.parse(document.getElementById('markers-data').textContent);
+    const heatPoints = JSON.parse(document.getElementById('heat-data').textContent);
+    const mapCenter = JSON.parse(document.getElementById('map-center').textContent);
 
     function toggleFullScreen() {
         const wrapper = document.getElementById('map-wrapper');
-        const btn = document.getElementById('fullscreen-btn');
-        
-        if (!document.fullscreenElement) {
-            wrapper.requestFullscreen().catch(err => { alert(`تعذر تكبير الشاشة: ${err.message}`); });
-            btn.innerHTML = '<span>🗗</span> تصغير الشاشة';
-        } else {
-            document.exitFullscreen();
-            btn.innerHTML = '<span>⛶</span> تكبير الشاشة';
-        }
+        if (!document.fullscreenElement) { wrapper.requestFullscreen().catch(()=>{}); }
+        else { document.exitFullscreen(); }
     }
-
-    // تحديث حجم الخريطة فوراً عند الدخول أو الخروج من الشاشة الكاملة لمنع التقطيع
     document.addEventListener("fullscreenchange", function() {
         setTimeout(() => { map.invalidateSize(); }, 200);
     });
 
-    // 2. تهيئة الخريطة
     const map = L.map('networkMap', { zoomControl: false });
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // 3. طبقات الخريطة
+    // الشوارع هي الطبقة الافتراضية (أسماء الشوارع والمباني مثل جوجل)
     const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-    const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
+    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
+    streetsLayer.addTo(map);
+    L.control.layers(
+        { "🛣️ الشوارع (افتراضي)": streetsLayer, "🛰️ القمر الصناعي": satelliteLayer, "⛰️ التضاريس": topoLayer },
+        null, { position: 'bottomleft' }
+    ).addTo(map);
 
-    satelliteLayer.addTo(map);
-    const baseMaps = {
-        "🗺️ عرض القمر الصناعي": satelliteLayer,
-        "🛣️ عرض الشوارع القياسي": streetsLayer,
-        "⛰️ عرض التضاريس (للمسافات)": terrainLayer
-    };
-    L.control.layers(baseMaps, null, { position: 'bottomleft' }).addTo(map);
+    const serverIcon = L.divIcon({ html: '🏢', className: 'text-2xl', iconSize: [30, 30] });
+    const unsetIcon = L.divIcon({ html: '<span class="unset-marker" style="font-size:26px">🔴</span>', className: '', iconSize: [30, 30] });
 
-    // 4. أدوات الرسم
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    const drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawnItems },
-        draw: {
-            polygon: { shapeOptions: { color: '#10b981', weight: 2, fillOpacity: 0.2 } },
-            polyline: { shapeOptions: { color: '#f59e0b', weight: 3, dashArray: '5, 10' } },
-            rectangle: false, circle: false, circlemarker: false, marker: true
-        }
-    });
-
-    map.on(L.Draw.Event.CREATED, function (event) {
-        drawnItems.addLayer(event.layer);
-    });
-
-    // 5. محرك الخريطة الحرارية (Heatmap)
-    let heatLayer = null;
-    let isHeatmapActive = false;
+    let allMarkers = [];
     let markerGroup = new L.FeatureGroup();
     map.addLayer(markerGroup);
 
-    const mapTools = {
-        enableMove: function() { /* الأدوات تغلق تلقائياً */ },
-        enableDrawPolygon: function() { new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable(); },
-        enableDrawLine: function() { new L.Draw.Polyline(map, drawControl.options.draw.polyline).enable(); },
-        clearAll: function() { if(confirm('هل أنت متأكد من مسح جميع المناطق والخطوط المرسومة؟')) drawnItems.clearLayers(); },
-        saveGeoData: function() {
-            const data = drawnItems.toGeoJSON();
-            console.log("Data to backend:", JSON.stringify(data));
-            alert('تم حفظ إحداثيات التغطية بنجاح في قاعدة بيانات Sakr Connect.');
-        },
-        toggleHeatmap: function() {
-            const btn = document.getElementById('heatmap-btn');
-            if(isHeatmapActive) {
-                map.removeLayer(heatLayer);
-                map.addLayer(markerGroup);
-                btn.classList.remove('bg-rose-800');
-                btn.classList.add('bg-rose-600/90');
-                isHeatmapActive = false;
-            } else {
-                map.removeLayer(markerGroup);
-                // استخراج إحداثيات النقاط لعمل السحابة الحرارية 
-                const heatData = markersData.map(m => [m.lat, m.lng, Math.random() * 100]);
-                
-                if(!heatLayer) {
-                    heatLayer = L.heatLayer(heatData, {radius: 35, blur: 25, maxZoom: 15, gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}});
-                }
-                map.addLayer(heatLayer);
-                btn.classList.remove('bg-rose-600/90');
-                btn.classList.add('bg-rose-800');
-                isHeatmapActive = true;
-            }
-        }
-    };
-
-    // 6. رسم الدبابيس (الروترات)
-    const serverIcon = L.divIcon({ html: '🏢', className: 'text-2xl', iconSize: [30, 30] });
-    const clientIconOnline = L.divIcon({ html: '🟢', className: 'text-[10px]', iconSize: [12, 12] });
-    const clientIconOffline = L.divIcon({ html: '🔴', className: 'text-[10px] animate-pulse', iconSize: [12, 12] });
-    
-    let allMapMarkers = [];
-
-    if (markersData && markersData.length > 0) {
-        markersData.forEach(marker => {
-            let iconToUse = marker.type === 'server' ? serverIcon : (marker.status === 'online' ? clientIconOnline : clientIconOffline);
-            
-            let newMarker = L.marker([marker.lat, marker.lng], {icon: iconToUse})
-                .bindPopup(`<div class="font-sans">
-                                <b class="text-blue-400 block border-b border-slate-700 pb-1 mb-1">${marker.name}</b>
-                                <span class="text-[10px] text-slate-400">الشبكة: ${marker.reseller_name || 'غير محدد'}</span><br>
-                                <span class="text-[10px] text-slate-400">الحالة: <span class="${marker.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}">${marker.status}</span></span>
-                            </div>`);
-            
-            markerGroup.addLayer(newMarker);
-            allMapMarkers.push(newMarker);
-        });
-
-        // زووم ذكي يجمع كل النقاط
-        map.fitBounds(markerGroup.getBounds(), { padding: [50, 50] });
-
-    } else {
-        // نقطة افتراضية في حالة عدم وجود داتا
-        map.setView([27.7333, 30.8333], 13);
+    function popupHtml(m) {
+        const st = m.status === 'online'
+            ? '<span class="text-emerald-400 font-bold">متصل 🟢</span>'
+            : '<span class="text-rose-400 font-bold">غير متصل 🔴</span>';
+        return `<div class="font-sans" style="min-width:180px">
+            <b class="text-blue-400 block border-b border-slate-700 pb-1 mb-1">${m.name}</b>
+            <div class="text-[11px] text-slate-300">الشبكة: ${m.reseller_name || 'غير محدد'}</div>
+            <div class="text-[11px] text-slate-300">الحالة: ${st}</div>
+            <div class="text-[11px] text-slate-300">الجلسات النشطة: <b class="text-sky-400">${m.sessions || 0}</b></div>
+            <div class="text-[10px] text-slate-500 font-mono" dir="ltr">${m.ip || ''}</div>
+            <div class="text-[10px] text-slate-500">اسحب الدبوس لتعديل الموقع ثم احفظ</div>
+        </div>`;
     }
+
+    function drawMarkers(filterNet) {
+        markerGroup.clearLayers();
+        allMarkers = [];
+        let nR = 0, nO = 0, nU = 0, nS = 0;
+        markersData.forEach(m => {
+            if (filterNet && filterNet !== 'all' && String(m.reseller_id) !== String(filterNet)) return;
+            nR++; nS += (m.sessions || 0);
+            if (m.status === 'online') nO++;
+            if (!m.has_coords) nU++;
+            const latlng = m.has_coords ? [m.lat, m.lng] : [mapCenter[0], mapCenter[1]];
+            const mk = L.marker(latlng, { icon: m.has_coords ? serverIcon : unsetIcon, draggable: true, title: m.name });
+            mk._routerId = m.id;
+            mk.bindPopup(() => popupHtml(m));
+            mk.on('dragend', function() {
+                const p = mk.getLatLng();
+                m.lat = p.lat; m.lng = p.lng; m.has_coords = true;
+                mk.setIcon(serverIcon);
+                mk.bindPopup(() => popupHtml(m));
+                updateStats();
+            });
+            markerGroup.addLayer(mk);
+            allMarkers.push(mk);
+        });
+        document.getElementById('stat-routers').textContent = nR;
+        document.getElementById('stat-online').textContent = nO;
+        document.getElementById('stat-unset').textContent = nU;
+        document.getElementById('stat-sessions').textContent = nS;
+        if (allMarkers.length > 0) {
+            try { map.fitBounds(markerGroup.getBounds().pad(0.2)); } catch(e) { map.setView([mapCenter[0], mapCenter[1]], mapCenter[2]); }
+        } else {
+            map.setView([mapCenter[0], mapCenter[1]], mapCenter[2]);
+        }
+    }
+
+    function updateStats() {
+        let nU = 0;
+        markersData.forEach(m => { if (!m.has_coords) nU++; });
+        document.getElementById('stat-unset').textContent = nU;
+    }
+
+    function filterByNetwork(v) { drawMarkers(v); }
+
+    let heatLayer = null, heatOn = false;
+    function toggleHeatmap() {
+        const btn = document.getElementById('heatmap-btn');
+        if (heatOn) {
+            map.removeLayer(heatLayer); map.addLayer(markerGroup);
+            heatOn = false; btn.classList.remove('bg-rose-800'); btn.classList.add('bg-rose-600/90');
+        } else {
+            const pts = heatPoints.length > 0 ? heatPoints : markersData.filter(m=>m.has_coords).map(m=>[m.lat,m.lng,1]);
+            map.removeLayer(markerGroup);
+            heatLayer = L.heatLayer(pts, { radius: 35, blur: 25, maxZoom: 15, gradient: {0.4:'blue',0.6:'cyan',0.7:'lime',0.8:'yellow',1.0:'red'} });
+            map.addLayer(heatLayer);
+            heatOn = true; btn.classList.add('bg-rose-800'); btn.classList.remove('bg-rose-600/90');
+        }
+    }
+
+    function saveGeoData() {
+        const payload = { routers: markersData.filter(m=>m.has_coords).map(m=>({id:m.id, lat:m.lat, lng:m.lng})) };
+        if (payload.routers.length === 0) { alert('لا توجد إحداثيات للحفظ'); return; }
+        fetch('/routers/map/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(d => {
+            if (d.status === 'success') { alert('تم حفظ ' + d.saved + ' موقع بنجاح في قاعدة البيانات ✅'); }
+            else { alert('خطأ: ' + (d.message || 'فشل الحفظ')); }
+        }).catch(() => alert('تعذر الاتصال بالسيرفر'));
+    }
+
+    drawMarkers('all');
 </script>
 {% endblock %}
