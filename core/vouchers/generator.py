@@ -183,6 +183,16 @@ class VoucherGenerator:
     # 1. توليد كروت هوت سبوت (للشبكات/الموزعين)
     # ==========================================
     @classmethod
+    def bulk_create_vouchers(cls, router_id, reseller_id, count, price, duration_minutes,
+                             quota_mb=0, length=8, use_letters=True, login_type='pin_only',
+                             name_prefix=''):
+        """اسم موحد يستخدمه مسار /manage/vouchers - يحوّل لمولد الهوت سبوت."""
+        return cls.bulk_create_hotspot_vouchers(
+            router_id=router_id, reseller_id=reseller_id, count=count, price=price,
+            duration_minutes=duration_minutes, quota_mb=quota_mb, length=length,
+            use_letters=use_letters, login_type=login_type, name_prefix=name_prefix)
+
+    @classmethod
     def bulk_create_hotspot_vouchers(cls, router_id, reseller_id, count, price, duration_minutes,
                                      quota_mb=0, length=8, use_letters=True, login_type='user_pass',
                                      name_prefix='', username_prefix='', username_length=8,

@@ -417,7 +417,7 @@ def save_package():
         db_session.rollback()
         flash(f'حدث خطأ أثناء الحفظ: {str(e)}', 'error')
         
-    if sys_type.startswith('network'):
+    if (sys_type or '').startswith('network'):
         return redirect(url_for('subscribers.manage_networks'))
     else:
         return redirect(url_for('subscribers.manage_hotspot'))
