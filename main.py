@@ -390,6 +390,87 @@ def admin_monitor():
                                security_alerts=0,
                                networks=[])
 
+@app.route('/admin/api/inspect_pin', methods=['POST'])
+@requires_roles('admin', 'super_admin')
+def api_inspect_pin():
+    """فحص جنائي حي: كارت/مستخدم/MAC -> الحالة + الجلسة الحية + الروتر والشبكة."""
+    import html as _html
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        data = {}
+    q = (data.get('query') or '').strip()
+    if not q:
+        return jsonify({"html": "<p class='text-amber-400 p-4'>اكتب كود الكارت أو اسم المستخدم أو الـ MAC أولاً.</p>"})
+
+    from database.models import Voucher, ActiveSession, Router, Subscriber
+    voucher = None
+    try:
+        voucher = db_session.query(Voucher).filter(
+            (Voucher.username == q) | (Voucher.password == q)
+        ).first()
+        if not voucher:
+            voucher = db_session.query(Voucher).filter_by(used_by_mac=q).first()
+    except Exception:
+        voucher = None
+
+    session_row = None
+    sub_row = None
+    try:
+        if voucher:
+            session_row = db_session.query(ActiveSession).filter_by(username=voucher.username).first()
+        else:
+            session_row = db_session.query(ActiveSession).filter(
+                (ActiveSession.username == q) | (ActiveSession.mac_address == q)).first()
+            sub_row = db_session.query(Subscriber).filter(
+                (Subscriber.username == q) | (Subscriber.mac_address == q)).first()
+    except Exception:
+        pass
+
+    if not voucher and not session_row and not sub_row:
+        return jsonify({"html": "<p class='text-rose-400 p-4 bg-rose-900/20 rounded border border-rose-800'>لا توجد نتائج مطابقة لـ: {}</p>".format(_html.escape(q))})
+
+    parts = []
+    if voucher:
+        _router = None
+        _net = ''
+        try:
+            _router = db_session.query(Router).filter_by(id=voucher.router_id).first()
+            if _router and _router.network:
+                _net = _router.network.name
+        except Exception:
+            pass
+        _status = {'unused': 'متاح للبيع', 'sold': 'مباع', 'active': 'متصل الآن',
+                   'expired': 'منتهي', 'suspended': 'موقوف'}.get(voucher.status, voucher.status)
+        parts.append(
+            "<div class='p-3 bg-[#0b111e] rounded-lg border border-slate-700 mb-2'>"
+            "<p class='text-cyan-400 font-black font-mono' dir='ltr'>{}</p>"
+            "<p class='text-xs text-slate-300 mt-1'>الحالة: <b>{}</b> | السعر: {} EGP | المدة: {} دقيقة | الكوتا: {}</p>"
+            "<p class='text-xs text-slate-400'>الروتر: {} | الشبكة: {} | MAC: {}</p></div>".format(
+                _html.escape(voucher.username), _html.escape(str(_status)), voucher.price or 0,
+                voucher.duration_minutes or 0,
+                (str(voucher.quota_mb) + ' MB') if voucher.quota_mb else 'غير محدود',
+                _html.escape(_router.name if _router else 'غير محدد'),
+                _html.escape(_net or 'غير محدد'),
+                _html.escape(voucher.used_by_mac or 'لم يربط بعد')))
+    if session_row:
+        parts.append(
+            "<div class='p-3 bg-emerald-900/20 rounded-lg border border-emerald-800 mb-2'>"
+            "<p class='text-emerald-400 text-xs font-black'>متصل الآن 🟢 IP: <span dir='ltr' class='font-mono'>{}</span> | MAC: <span dir='ltr' class='font-mono'>{}</span></p></div>".format(
+                _html.escape(session_row.ip_address or '-'),
+                _html.escape(getattr(session_row, 'mac_address', '') or '-')))
+    elif voucher:
+        parts.append("<div class='p-3 rounded-lg border border-slate-700 mb-2'><p class='text-xs text-slate-500'>لا توجد جلسة نشطة لهذا الكارت حالياً ⚪</p></div>")
+    if sub_row:
+        parts.append(
+            "<div class='p-3 bg-[#0b111e] rounded-lg border border-slate-700 mb-2'>"
+            "<p class='text-blue-400 text-xs font-black'>مشترك: {} | النوع: {} | الحالة: {} | تنتهي: {}</p></div>".format(
+                _html.escape(sub_row.username),
+                _html.escape(sub_row.sub_type or '-'),
+                _html.escape(sub_row.status or '-'),
+                sub_row.expiry_date.strftime('%Y-%m-%d') if getattr(sub_row, 'expiry_date', None) else '-'))
+    return jsonify({"html": ''.join(parts)})
+
 @app.route('/portal')
 def portal():
     app_visible = True

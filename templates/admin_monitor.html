@@ -122,7 +122,7 @@
                             {% endif %}
                         </td>
                         <td class="py-4 px-4 text-center">
-                            <button class="px-3 py-1.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white rounded border border-slate-700 hover:border-blue-500 font-bold transition text-[10px]">فحص الباتشات</button>
+                            <button onclick="inspectNetwork('{{ node.name }}')" class="px-3 py-1.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white rounded border border-slate-700 hover:border-blue-500 font-bold transition text-[10px]">فحص الباتشات</button>
                         </td>
                     </tr>
                     {% else %}
@@ -142,6 +142,11 @@
 </style>
 
 <script>
+function inspectNetwork(name) {
+    document.getElementById('audit-input').value = name;
+    document.getElementById('audit-form').requestSubmit();
+    document.getElementById('audit-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 document.getElementById('audit-form').addEventListener('submit', function(e) {
     e.preventDefault();
     const query = document.getElementById('audit-input').value;
@@ -163,7 +168,7 @@ document.getElementById('audit-form').addEventListener('submit', function(e) {
         resultDiv.classList.remove('hidden');
     })
     .catch(err => {
-        resultDiv.innerHTML = '<p class="text-rose-400 p-4 bg-rose-900/20 rounded border border-rose-800">جاري الإعداد... سيتم تفعيل الفحص الجنائي لاحقاً.</p>';
+        resultDiv.innerHTML = '<p class="text-rose-400 p-4 bg-rose-900/20 rounded border border-rose-800">تعذر الاتصال بالسيرفر. حاول مرة أخرى.</p>';
         resultDiv.classList.remove('hidden');
     })
     .finally(() => {
