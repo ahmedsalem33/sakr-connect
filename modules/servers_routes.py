@@ -12,6 +12,7 @@ from database.models import Router, Network, Subscriber, User, SaasPackage
 from core.db_manager import db_session
 from core.mikrotik.dispatcher import get_router_and_execute
 from core.mikrotik.api import MikrotikHandler
+from core.auth.trial import get_trial_status
 from sqlalchemy import func
 
 servers_bp = Blueprint('servers', __name__)
@@ -68,12 +69,30 @@ def add_server():
     data = request.json
     
     try:
-        # --- التحقق الديناميكي من حصة الروترات المتاحة في باقة الساس للعميل ---
+        # --- فحص الدفع الإلزامي: غير الأدمن لا يُسمح له بإضافة سيرفر إلا باشتراك مدفوع فعّال ---
         if role not in ['super_admin', 'admin']:
             user = db_session.query(User).filter_by(id=user_id).first()
+            if not user:
+                return jsonify({'success': False, 'message': 'الحساب غير موجود.'})
+            
+            trial = get_trial_status(user)
+            # during trial OR locked: block server addition entirely
+            if trial['is_trial'] or trial['is_locked']:
+                if trial['is_trial']:
+                    return jsonify({
+                        'success': False,
+                        'message': '⚠️ إضافة السيرفرات تتطلب اشتراكاً مدفوعاً. الفترة التجريبية (48 ساعة) لا تسمح بربط السيرفرات — يرجى تفعيل باقتك أولاً من صفحة الفواتير.'
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'message': '⚠️ اشتراكك منتهي أو غير مفعّل — لا يمكن إضافة سيرفرات جديدة قبل التجديد.'
+                    })
+            
+            # --- التحقق الديناميكي من حصة الروترات المتاحة في باقة الساس للعميل ---
             max_routers_allowed = 1 # حد أمان افتراضي
             
-            if user and user.package_id:
+            if user.package_id:
                 package = db_session.query(SaasPackage).filter_by(id=user.package_id).first()
                 if package and getattr(package, 'max_servers', 0) > 0:
                     max_routers_allowed = package.max_servers
@@ -94,12 +113,16 @@ def add_server():
                     'message': f'⚠️ عفواً، لقد استنفدت الحد الأقصى المسموح به لبافتك الحالية ({max_routers_allowed} سيرفر). يرجى ترقية خطة الساس الخاصة بك لزيادة السيرفرات.'
                 })
             
+            # --- منع وضع التخطي/المحاكاة لغير الأدمن: الإضافة تتطلب اتصالاً حقيقياً بالميكروتيك ---
+            bypass_check = False
+        else:
+            bypass_check = data.get('bypass_check', False)
+            
         ip = data.get('ip_address')
         port = int(data.get('api_port', 8728))
         coa_port = int(data.get('coa_port', 3799))
         api_user = data.get('api_user')
         api_password_input = data.get('api_password')
-        bypass_check = data.get('bypass_check', False)
         server_type_input = data.get('server_type', 'شبكات') # شبكات / كافيهات
         
         is_online = False
