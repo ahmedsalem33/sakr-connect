@@ -10,7 +10,11 @@
             <span class="text-[11px] text-slate-400 font-bold tracking-wide">جلسات الكروت النشطة الآن</span>
             <div class="flex items-end gap-3 mt-1">
                 <h2 class="text-3xl font-black text-blue-400 font-mono">{{ active_vouchers }}</h2>
-                <span class="text-[10px] text-emerald-400 font-bold mb-1 flex items-center gap-1">↑ مستقر</span>
+                {% if active_vouchers > 0 %}
+                <span class="text-[10px] text-emerald-400 font-bold mb-1 flex items-center gap-1">↑ نشط</span>
+                {% else %}
+                <span class="text-[10px] text-slate-500 font-bold mb-1 flex items-center gap-1">— لا يوجد اتصال</span>
+                {% endif %}
             </div>
             <div class="absolute -bottom-4 -left-4 text-blue-500/10 text-6xl group-hover:scale-110 transition duration-500">🎟️</div>
         </div>
@@ -29,7 +33,11 @@
             <span class="text-[11px] text-slate-400 font-bold tracking-wide">كروت منتهية / مسدودة (Depleted)</span>
             <div class="flex items-end gap-3 mt-1">
                 <h2 class="text-3xl font-black text-rose-400 font-mono">{{ depleted_vouchers }}</h2>
+                {% if depleted_vouchers > 0 %}
                 <span class="text-[10px] text-rose-400 font-bold mb-1">بحاجة للتجديد</span>
+                {% else %}
+                <span class="text-[10px] text-emerald-400 font-bold mb-1">كل الكروت سليمة</span>
+                {% endif %}
             </div>
             <div class="absolute -bottom-4 -left-4 text-rose-500/10 text-6xl group-hover:scale-110 transition duration-500">🗑️</div>
         </div>
@@ -39,7 +47,11 @@
             <span class="text-[11px] text-slate-400 font-bold tracking-wide">محاولات تخطي / أخطاء (Security)</span>
             <div class="flex items-end gap-3 mt-1">
                 <h2 class="text-3xl font-black text-amber-400 font-mono">{{ security_alerts }}</h2>
-                <span class="text-[10px] text-amber-400 font-bold mb-1 animate-pulse">مراقبة مطلوبة</span>
+                {% if security_alerts > 0 %}
+                <span class="text-[10px] text-amber-400 font-bold mb-1 animate-pulse">مراجعة مطلوبة</span>
+                {% else %}
+                <span class="text-[10px] text-emerald-400 font-bold mb-1">لا توجد تهديدات</span>
+                {% endif %}
             </div>
             <div class="absolute -bottom-4 -left-4 text-amber-500/10 text-6xl group-hover:scale-110 transition duration-500">🛡️</div>
         </div>
