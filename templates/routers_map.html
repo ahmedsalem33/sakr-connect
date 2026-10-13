@@ -2,199 +2,519 @@
 
 {% block content %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
-<div class="space-y-4 w-full max-w-[1400px] mx-auto" dir="rtl">
+<div class="space-y-3 w-full max-w-[1600px] mx-auto h-[88vh] flex flex-col" dir="rtl">
 
-    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg flex justify-between items-center flex-wrap gap-3">
-        <div class="flex items-center gap-4">
-            <a href="javascript:history.back()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 border border-slate-700 shadow-md">
-                <span>🔙</span> عودة
-            </a>
+    <!-- ====== الشريط العلوي ====== -->
+    <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-3 shadow-lg flex justify-between items-center shrink-0 flex-wrap gap-2">
+        <div class="flex items-center gap-3">
+            <a href="javascript:history.back()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-lg text-xs font-bold transition border border-slate-700">🔙 عودة</a>
             <div>
-                <h2 class="text-lg font-black text-white flex items-center gap-2">
-                    <span class="text-emerald-500">🗺️</span> خريطة الشبكات والروترات
+                <h2 class="text-base font-black text-white flex items-center gap-2">
+                    <span class="text-emerald-500">🗺️</span> الخريطة الحيّة للأجهزة
+                    <span id="liveBadge" class="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full animate-pulse">● LIVE</span>
                 </h2>
-                <p class="text-xs text-slate-400 mt-1 font-bold">اسحب أي دبوس لمكانه الحقيقي في الشارع ثم احفظ. البيانات حية 100%.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5 font-bold">تحديث تلقائي كل ١٥ ثانية — المرور: <span id="lastUpdate" class="text-slate-500 font-mono">—</span></p>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-4 py-2 rounded-lg text-xs font-black transition border border-blue-500/50">⛶ تكبير الشاشة</button>
-            <button onclick="saveGeoData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-black transition shadow-lg">💾 حفظ الإحداثيات</button>
+        <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="mapCtl.refreshNow()" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3 py-2 rounded-lg text-xs font-black transition border border-emerald-500/40">🔄 تحديث الآن</button>
+            <button onclick="mapCtl.togglePause()" id="pauseBtn" class="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3 py-2 rounded-lg text-xs font-black transition border border-amber-500/40">⏸ إيقاف مؤقت</button>
+            <button onclick="mapCtl.toggleHeatmap()" id="heatmap-btn" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-3 py-2 rounded-lg text-xs font-black transition border border-rose-500/40">🔥 حراري</button>
+            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-2 rounded-lg text-xs font-black transition border border-blue-500/50">⛶ تكبير</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div class="bg-[#0f172a] border border-slate-800 rounded-xl p-4 shadow-lg space-y-3">
-            {% if current_role in ['admin', 'super_admin'] %}
-            <div>
-                <label class="block text-[11px] font-bold text-amber-500 mb-1">👑 كل الشبكات ({{ networks_list|length }})</label>
-                <select id="networkFilter" onchange="filterByNetwork(this.value)" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-2 outline-none">
-                    <option value="all">🌐 عرض الجميع</option>
-                    {% for net in networks_list %}
-                    <option value="{{ net.id }}">{{ net.name }} ({{ net.routers }} روتر / {{ net.subscribers }} مشترك)</option>
-                    {% endfor %}
-                </select>
+    <!-- ====== شريط الإحصائيات ====== -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 shrink-0">
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center"><div class="text-lg font-black text-white" id="stRouters">—</div><div class="text-[10px] text-slate-400 font-bold">سيرفرات/روترات (متصل/الإجمالي)</div></div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center"><div class="text-lg font-black text-emerald-400" id="stSessions">—</div><div class="text-[10px] text-slate-400 font-bold">جلسات نشطة الآن</div></div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center"><div class="text-lg font-black text-sky-400" id="stSubs">—</div><div class="text-[10px] text-slate-400 font-bold">إجمالي المشتركين</div></div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center"><div class="text-lg font-black text-violet-400" id="stAps">—</div><div class="text-[10px] text-slate-400 font-bold">أكسس بوينتات</div></div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center"><div class="text-lg font-black text-amber-400" id="stNets">—</div><div class="text-[10px] text-slate-400 font-bold">شبكات</div></div>
+        <div class="bg-[#0f172a] border border-slate-800 rounded-lg p-2 text-center cursor-pointer hover:border-amber-500/60 transition" onclick="mapCtl.toggleUnlocated()"><div class="text-lg font-black text-rose-400" id="stUnloc">—</div><div class="text-[10px] text-slate-400 font-bold">أجهزة بلا موقع 📍</div></div>
+    </div>
+
+    <!-- ====== الخريطة ====== -->
+    <div id="map-wrapper" class="relative flex-1 bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+        <div id="networkMap" class="w-full h-full z-0"></div>
+
+        <!-- لوحة الفلاتر والـ Legend (يمين) -->
+        <div class="absolute top-3 right-3 z-[500] w-60 max-h-full overflow-y-auto space-y-2" style="scrollbar-width:thin">
+            <div class="bg-[#151f32]/95 backdrop-blur-md border border-slate-700 rounded-lg p-3 space-y-2 shadow-2xl">
+                <div>
+                    <label class="block text-[10px] font-bold text-amber-500 mb-1">🌐 الشبكة</label>
+                    <select id="networkFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 outline-none focus:border-amber-500">
+                        <option value="all">عرض جميع الشبكات</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-blue-400 mb-1">📡 نوع الجهاز</label>
+                    <select id="typeFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 outline-none focus:border-blue-500">
+                        <option value="all">الكل</option>
+                        <option value="server">🔵 سيرفرات رئيسية</option>
+                        <option value="router">🔶 روترات توزيع</option>
+                        <option value="ap">📡 أكسس بوينتات</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-emerald-400 mb-1">🟢 الحالة</label>
+                    <select id="statusFilter" class="w-full bg-[#0b111e] border border-slate-700 rounded text-xs text-white px-2 py-1.5 outline-none focus:border-emerald-500">
+                        <option value="all">الكل</option>
+                        <option value="online">متصل فقط</option>
+                        <option value="offline">غير متصل فقط</option>
+                        <option value="unknown">لم يتم الرصد</option>
+                    </select>
+                </div>
             </div>
-            {% endif %}
-            <div class="text-[11px] text-slate-400 font-bold border-t border-slate-800 pt-2">
-                <div>📡 الروترات: <span id="stat-routers" class="text-white font-mono">0</span></div>
-                <div>🟢 المتصلة: <span id="stat-online" class="text-emerald-400 font-mono">0</span></div>
-                <div>⚪ بدون إحداثيات: <span id="stat-unset" class="text-amber-400 font-mono">0</span></div>
-                <div>👥 جلسات نشطة: <span id="stat-sessions" class="text-sky-400 font-mono">0</span></div>
+
+            <!-- Legend الحالات -->
+            <div class="bg-[#151f32]/95 backdrop-blur-md border border-slate-700 rounded-lg p-3 shadow-2xl">
+                <div class="text-[10px] font-black text-slate-300 mb-2">🔑 دليل الحالات</div>
+                <div class="space-y-1.5 text-[11px] text-slate-300 font-bold">
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_#22c55e]"></span> متصل</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#ef4444]"></span> غير متصل</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-300"></span> لم يتم الرصد</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-600"></span> جهاز غير مرقاب</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border-2 border-sky-400"></span> 🔵 سيرفر / 🔶 روتر / 📡 AP</div>
+                </div>
+                <div class="border-t border-slate-700 mt-2 pt-2">
+                    <div class="text-[10px] font-black text-slate-300 mb-1.5">🎨 ألوان الشبكات</div>
+                    <div id="legendNets" class="space-y-1 text-[11px] text-slate-300 font-bold"><span class="text-slate-500">—</span></div>
+                </div>
             </div>
-            <div>
-                <button onclick="toggleHeatmap()" id="heatmap-btn" class="w-full bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-[11px] py-2 rounded transition">🔥 خريطة الكثافة (جلسات حقيقية)</button>
-            </div>
-            <p class="text-[10px] text-slate-500">النقاط الحمراء النابضة = روترات بدون موقع. اسحبها لمكانها ثم احفظ.</p>
+
+            <button onclick="mapCtl.fitAll()" class="w-full bg-slate-800/95 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs py-2 rounded-lg border border-slate-700 transition backdrop-blur">🎯 ضبط على كل الأجهزة</button>
+            <button onclick="mapCtl.enableDrawPolygon()" class="w-full bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded-lg border border-emerald-500/50 transition backdrop-blur flex justify-between px-3"><span>رسم منطقة تغطية</span><span>📐</span></button>
+            <button onclick="mapCtl.enableDrawLine()" class="w-full bg-amber-600/90 hover:bg-amber-500 text-white font-bold text-xs py-2 rounded-lg border border-amber-500/50 transition backdrop-blur flex justify-between px-3"><span>رسم خط ربط (LOS)</span><span>📏</span></button>
+            <button onclick="mapCtl.clearDrawings()" class="w-full bg-slate-800/95 hover:bg-rose-600 text-slate-300 hover:text-white font-bold text-xs py-2 rounded-lg border border-slate-700 hover:border-rose-500 transition backdrop-blur flex justify-between px-3"><span>مسح الرسومات</span><span>🗑️</span></button>
         </div>
 
-        <div class="lg:col-span-3">
-            <div id="map-wrapper" class="relative bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-2xl" style="height: 70vh; min-height: 480px;">
-                <div id="networkMap" class="w-full h-full z-0"></div>
+        <!-- لوحة الأجهزة بلا موقع (يسار) -->
+        <div id="unlocatedPanel" class="absolute top-3 left-3 z-[500] w-64 max-h-[70%] overflow-y-auto bg-[#151f32]/95 backdrop-blur-md border border-amber-500/40 rounded-lg p-3 shadow-2xl hidden" style="scrollbar-width:thin">
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-[11px] font-black text-amber-400">📍 أجهزة بلا موقع بعد</div>
+                <button onclick="mapCtl.toggleUnlocated()" class="text-slate-400 hover:text-white text-xs font-bold">✕</button>
             </div>
+            <div class="text-[10px] text-slate-400 mb-2 font-bold">الموقع بيتحدد تلقائياً أول مزامنة (GPS/IP) — أو حدّث يدوياً من صفحة السيرفرات.</div>
+            <div id="unlocList" class="space-y-1.5"></div>
+        </div>
+
+        <!-- كارت الـ Hover -->
+        <div id="hoverCard" class="absolute z-[600] hidden pointer-events-none bg-[#0b111e]/97 backdrop-blur border border-slate-600 rounded-xl p-3 shadow-2xl w-64 text-right" dir="rtl"></div>
+
+        <!-- لوحة التحكم بالجعس (اضغط على أي جهاز) -->
+        <div id="deviceDrawer" class="absolute top-0 left-0 h-full w-[330px] max-w-[85%] bg-[#0b111e]/98 backdrop-blur-md border-r border-slate-700 z-[700] transform -translate-x-full transition-transform duration-300 overflow-y-auto p-4" dir="rtl" style="scrollbar-width:thin">
+            <div id="drawerContent"></div>
         </div>
     </div>
 </div>
 
+<!-- التنبيهات (Toasts) -->
+<div id="toasts" class="fixed bottom-4 left-4 z-[9999] space-y-2"></div>
+
 <style>
     .leaflet-bar a { background-color: #151f32 !important; color: #94a3b8 !important; border-color: #334155 !important; }
+    .leaflet-bar a:hover { background-color: #1e293b !important; color: #fff !important; }
+    .leaflet-control-layers { background-color: #151f32 !important; color: #e2e8f0 !important; border: 1px solid #334155 !important; border-radius: 8px !important; }
     .leaflet-popup-content-wrapper { background-color: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; direction: rtl; text-align: right; }
     .leaflet-popup-tip { background-color: #0f172a; }
-    #map-wrapper:fullscreen { background-color: #0f172a; padding: 0; border: none; border-radius: 0; }
-    @keyframes pulse-red { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .unset-marker { animation: pulse-red 1.5s infinite; }
+    #map-wrapper:fullscreen { background-color: #0f172a; border-radius: 0; }
+
+    /* ===== ماركرات الأجهزة ===== */
+    .mk { position: relative; display: flex; align-items: center; justify-content: center;
+          background: #0b111e; border: 2.5px solid var(--nc, #3b82f6); color: #fff;
+          font-size: 15px; box-shadow: 0 0 10px rgba(0,0,0,.6); }
+    .mk-server { width: 36px; height: 36px; border-radius: 50%; }
+    .mk-ap     { width: 27px; height: 27px; border-radius: 50%; font-size: 12px; }
+    .mk-router { width: 28px; height: 28px; transform: rotate(45deg); border-radius: 6px; margin: 5px; }
+    .mk-router span { transform: rotate(-45deg); font-size: 12px; }
+    /* هالة الحالة */
+    .st-online   { box-shadow: 0 0 12px 2px rgba(34,197,94,.75); }
+    .st-offline  { box-shadow: 0 0 12px 2px rgba(239,68,68,.75); }
+    .st-unknown  { border-style: dashed !important; opacity: .8; }
+    .st-unmon    { border-color: #475569 !important; opacity: .65; }
+    .mk .dot { position: absolute; bottom: -3px; left: -3px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #0b111e; }
+    .dot-online { background: #22c55e; } .dot-offline { background: #ef4444; }
+    .dot-unknown { background: #cbd5e1; } .dot-unmon { background: #64748b; }
+    .mk .lockbadge { position: absolute; top: -9px; right: -9px; font-size: 11px; filter: drop-shadow(0 0 3px #000); }
+    .mk-pulse::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(34,197,94,.5); animation: mkpulse 1.8s ease-out infinite; }
+    @keyframes mkpulse { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+    .hc-title { font-weight: 900; font-size: 13px; color: #fff; margin-bottom: 4px; }
+    .hc-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; padding: 2px 0; border-bottom: 1px dashed #1e293b; }
+    .hc-row b { color: #94a3b8; font-weight: 700; }
+    .hc-row span { color: #e2e8f0; font-weight: 800; }
+
+    .drawer-btn { width: 100%; font-weight: 900; font-size: 12px; padding: 9px 10px; border-radius: 8px; transition: .15s; border: 1px solid; }
+    .btn-lock { background: rgba(239,68,68,.15); color: #f87171; border-color: rgba(239,68,68,.4); }
+    .btn-lock:hover { background: #ef4444; color: #fff; }
+    .btn-unlock { background: rgba(34,197,94,.15); color: #4ade80; border-color: rgba(34,197,94,.4); }
+    .btn-unlock:hover { background: #22c55e; color: #fff; }
+    .btn-ghost { background: rgba(148,163,184,.1); color: #cbd5e1; border-color: #334155; }
+    .btn-ghost:hover { background: #334155; color: #fff; }
+
+    .toast { background: #0b111e; border: 1px solid #334155; color: #e2e8f0; padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 800; box-shadow: 0 10px 25px rgba(0,0,0,.5); animation: tin .25s ease; max-width: 320px; }
+    .toast.ok { border-color: rgba(34,197,94,.5); } .toast.err { border-color: rgba(239,68,68,.5); }
+    @keyframes tin { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+    select { color-scheme: dark; }
 </style>
 
-<script id="markers-data" type="application/json">
-    {{ markers | default('[]') | tojson | safe }}
-</script>
-<script id="heat-data" type="application/json">
-    {{ heat_data | default('[]') | tojson | safe }}
-</script>
-<script id="map-center" type="application/json">
-    {{ map_center | default('[30.0444, 31.2357, 6]') | tojson | safe }}
-</script>
-
 <script>
-    const markersData = JSON.parse(document.getElementById('markers-data').textContent);
-    const heatPoints = JSON.parse(document.getElementById('heat-data').textContent);
-    const mapCenter = JSON.parse(document.getElementById('map-center').textContent);
+/* =====================================================================
+   الخريطة الحيّة — Sakr Connect
+   - بيانات حية من /api/routers/map-data كل 15 ثانية (تتوقف لو التاب مخفي)
+   - Hover = كارت تفاصيل | ضغط = لوحة تحكم (قفل/فتح الخدمة)
+   ===================================================================== */
+const ROLE = "{{ current_role }}";
+const POLL_MS = 15000;
 
-    function toggleFullScreen() {
-        const wrapper = document.getElementById('map-wrapper');
-        if (!document.fullscreenElement) { wrapper.requestFullscreen().catch(()=>{}); }
-        else { document.exitFullscreen(); }
+let DATA = { networks: [], devices: [], unlocated: [], stats: {} };
+let paused = false, firstLoad = true, pollTimer = null, loading = false;
+const drawnItems = new L.FeatureGroup();
+
+/* ---------- الخريطة والطبقات ---------- */
+const map = L.map('networkMap', { zoomControl: false }).setView([27.7333, 30.8333], 6);
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
+satelliteLayer.addTo(map);
+L.control.layers({
+    "🗺️ قمر صناعي": satelliteLayer,
+    "🛣️ شوارع": streetsLayer,
+    "⛰️ تضاريس": terrainLayer
+}, null, { position: 'bottomleft' }).addTo(map);
+
+const lineGroup = L.layerGroup().addTo(map);
+const markerGroup = L.layerGroup().addTo(map);
+map.addLayer(drawnItems);
+let heatLayer = null, heatOn = false;
+
+map.on(L.Draw.Event.CREATED, e => drawnItems.addLayer(e.layer));
+
+/* ---------- أدوات ---------- */
+const mapCtl = {
+    refreshNow: () => fetchMapData(true),
+    togglePause() {
+        paused = !paused;
+        const b = document.getElementById('pauseBtn');
+        b.innerHTML = paused ? '▶ استئناف' : '⏸ إيقاف مؤقت';
+        b.classList.toggle('bg-emerald-600/20', paused);
+        b.classList.toggle('text-emerald-400', paused);
+        document.getElementById('liveBadge').style.opacity = paused ? .35 : 1;
+        if (!paused) fetchMapData(true);
+    },
+    toggleUnlocated() { document.getElementById('unlocatedPanel').classList.toggle('hidden'); },
+    fitAll: () => fitToMarkers(),
+    enableDrawPolygon() { new L.Draw.Polygon(map, { shapeOptions: { color: '#10b981', weight: 2, fillOpacity: .18 } }).enable(); },
+    enableDrawLine() { new L.Draw.Polyline(map, { shapeOptions: { color: '#f59e0b', weight: 3, dashArray: '5,10' } }).enable(); },
+    clearDrawings() { if (drawnItems.getLayers().length && confirm('مسح كل المناطق والخطوط المرسومة؟')) drawnItems.clearLayers(); },
+    toggleHeatmap() {
+        const b = document.getElementById('heatmap-btn');
+        heatOn = !heatOn;
+        if (heatOn) { map.removeLayer(markerGroup); renderHeat(); b.classList.add('bg-rose-600'); }
+        else { if (heatLayer) map.removeLayer(heatLayer); map.addLayer(markerGroup); b.classList.remove('bg-rose-600'); renderLinesAndMarkers(); }
     }
-    document.addEventListener("fullscreenchange", function() {
-        setTimeout(() => { map.invalidateSize(); }, 200);
+};
+
+/* ---------- حالة الجهاز → لون/تسمية (زي الـ SAS Panel) ---------- */
+function statusInfo(dev) {
+    const s = (dev.status || '').toLowerCase();
+    if (s === 'online')  return { key: 'online',  label: 'متصل 🟢',       color: '#22c55e' };
+    if (s === 'offline') return { key: 'offline', label: 'غير متصل 🔴',   color: '#ef4444' };
+    if (!s || s === 'unknown') return { key: 'unknown', label: 'لم يتم الرصد ⚪', color: '#cbd5e1' };
+    return { key: 'unmon', label: 'غير مرقاب ⚫', color: '#64748b' };
+}
+function typeLabel(t) { return t === 'server' ? '🔵 سيرفر رئيسي' : t === 'router' ? '🔶 روتر توزيع' : '📡 أكسس بوينت'; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+/* ---------- جلب البيانات الحيّة ---------- */
+async function fetchMapData(manual) {
+    if (loading) return;
+    loading = true;
+    try {
+        const r = await fetch('/api/routers/map-data', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        if (!j.success) throw new Error(j.message || 'fail');
+        DATA = j;
+        document.getElementById('lastUpdate').textContent = j.server_time || new Date().toLocaleTimeString('en-GB');
+        renderNetworkFilter();
+        renderAll();
+        if (firstLoad && DATA.devices.length) { fitToMarkers(); firstLoad = false; }
+        if (manual) toast('تم تحديث بيانات الخريطة', 'ok');
+    } catch (e) {
+        toast('تعذر التحديث الحي: ' + e.message, 'err');
+    } finally {
+        loading = false;
+    }
+}
+
+function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(() => { if (!paused && !document.hidden) fetchMapData(false); }, POLL_MS);
+}
+function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPolling();
+    else { startPolling(); if (!paused) fetchMapData(false); }
+});
+
+/* ---------- الفلاتر ---------- */
+function getFilters() {
+    return {
+        net: document.getElementById('networkFilter').value,
+        type: document.getElementById('typeFilter').value,
+        st: document.getElementById('statusFilter').value
+    };
+}
+function passFilter(d) {
+    const f = getFilters();
+    if (f.net !== 'all' && String(d.network_id) !== f.net) return false;
+    if (f.type !== 'all' && d.type !== f.type) return false;
+    if (f.st !== 'all' && statusInfo(d).key !== f.st) return false;
+    return true;
+}
+function renderNetworkFilter() {
+    const sel = document.getElementById('networkFilter');
+    const netsJson = JSON.stringify(DATA.networks);
+    if (sel.dataset.sig === netsJson) return; // مفيش تغيير → متتعبش القائمة
+    sel.dataset.sig = netsJson;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="all">عرض جميع الشبكات</option>' +
+        DATA.networks.map(n => `<option value="${n.id}">🎨 ${esc(n.name)} (${n.subscribers || 0})</option>`).join('');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+
+    document.getElementById('legendNets').innerHTML = DATA.networks.length
+        ? DATA.networks.map(n => `<div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm" style="background:${n.color}"></span> ${esc(n.name)}</div>`).join('')
+        : '<span class="text-slate-500">لا توجد شبكات</span>';
+}
+
+/* ---------- الرسم ---------- */
+function renderAll() {
+    renderStats();
+    renderUnlocated();
+    renderLinesAndMarkers();
+    if (heatOn) renderHeat();
+}
+
+function renderStats() {
+    const s = DATA.stats || {};
+    document.getElementById('stRouters').textContent = `${s.routers_online ?? 0}/${s.routers_total ?? 0}`;
+    document.getElementById('stSessions').textContent = s.active_sessions ?? 0;
+    document.getElementById('stSubs').textContent = s.subscribers ?? 0;
+    document.getElementById('stAps').textContent = s.access_points ?? 0;
+    document.getElementById('stNets').textContent = s.networks ?? 0;
+    document.getElementById('stUnloc').textContent = s.unlocated ?? 0;
+}
+
+function renderUnlocated() {
+    document.getElementById('unlocList').innerHTML = (DATA.unlocated || []).map(d => `
+        <div class="bg-[#0b111e] border border-slate-700 rounded p-2">
+            <div class="text-[11px] font-black text-white">${esc(d.name)}</div>
+            <div class="text-[10px] text-slate-400 font-bold">${typeLabel(d.type)} • ${esc(d.network_name)}</div>
+            <div class="text-[10px] text-amber-400 font-bold mt-1">${esc(d.ip || '')} — ${d.last_seen ? 'آخر ظهور: ' + d.last_seen : 'لم يُرصد بعد'}</div>
+        </div>`).join('') || '<div class="text-[11px] text-emerald-400 font-bold">✅ كل الأجهزة لها موقع.</div>';
+}
+
+function markerHtml(d) {
+    const st = statusInfo(d);
+    const cls = d.type === 'server' ? 'mk-server' : d.type === 'router' ? 'mk-router' : 'mk-ap';
+    const glyph = d.type === 'server' ? '🖥️' : d.type === 'router' ? '🔀' : '📡';
+    const pulse = (st.key === 'online' && d.type !== 'ap') ? ' mk-pulse' : '';
+    const lock = d.service_state === 'closed' ? '<span class="lockbadge">🔒</span>' : '';
+    return `<div class="mk ${cls} st-${st.key}${pulse}" style="--nc:${d.color}"><span>${glyph}</span>
+            <span class="dot dot-${st.key}"></span>${lock}</div>`;
+}
+
+function bezierPts(a, b) {
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const cx = mx - dy * 0.18, cy = my + dx * 0.18;
+    const pts = [];
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+        pts.push([
+            (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0],
+            (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1]
+        ]);
+    }
+    return pts;
+}
+
+function renderLinesAndMarkers() {
+    lineGroup.clearLayers();
+    markerGroup.clearLayers();
+    if (heatOn) return;
+
+    const visible = DATA.devices.filter(passFilter);
+    const byRouterId = {};
+    visible.forEach(d => { if (d.type !== 'ap') byRouterId[d.id] = d; });
+
+    // خطوط التسلسل الهرمي: سيرفر/روتر → ابن (روتر أو AP)
+    visible.forEach(d => {
+        if (!d.parent_id) return;
+        const parent = byRouterId[d.parent_id];
+        if (!parent) return;
+        const st = statusInfo(d);
+        L.polyline(bezierPts([parent.lat, parent.lng], [d.lat, d.lng]), {
+            color: d.color, weight: 2, opacity: .55,
+            dashArray: st.key === 'offline' ? '6,8' : null, interactive: false
+        }).addTo(lineGroup);
     });
 
-    const map = L.map('networkMap', { zoomControl: false });
-    L.control.zoom({ position: 'topleft' }).addTo(map);
-
-    // الشوارع هي الطبقة الافتراضية (أسماء الشوارع والمباني مثل جوجل)
-    const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
-    streetsLayer.addTo(map);
-    L.control.layers(
-        { "🛣️ الشوارع (افتراضي)": streetsLayer, "🛰️ القمر الصناعي": satelliteLayer, "⛰️ التضاريس": topoLayer },
-        null, { position: 'bottomleft' }
-    ).addTo(map);
-
-    const serverIcon = L.divIcon({ html: '🏢', className: 'text-2xl', iconSize: [30, 30] });
-    const unsetIcon = L.divIcon({ html: '<span class="unset-marker" style="font-size:26px">🔴</span>', className: '', iconSize: [30, 30] });
-
-    let allMarkers = [];
-    let markerGroup = new L.FeatureGroup();
-    map.addLayer(markerGroup);
-
-    function popupHtml(m) {
-        const st = m.status === 'online'
-            ? '<span class="text-emerald-400 font-bold">متصل 🟢</span>'
-            : '<span class="text-rose-400 font-bold">غير متصل 🔴</span>';
-        return `<div class="font-sans" style="min-width:180px">
-            <b class="text-blue-400 block border-b border-slate-700 pb-1 mb-1">${m.name}</b>
-            <div class="text-[11px] text-slate-300">الشبكة: ${m.reseller_name || 'غير محدد'}</div>
-            <div class="text-[11px] text-slate-300">الحالة: ${st}</div>
-            <div class="text-[11px] text-slate-300">الجلسات النشطة: <b class="text-sky-400">${m.sessions || 0}</b></div>
-            <div class="text-[10px] text-slate-500 font-mono" dir="ltr">${m.ip || ''}</div>
-            <div class="text-[10px] text-slate-500">اسحب الدبوس لتعديل الموقع ثم احفظ</div>
-        </div>`;
-    }
-
-    function drawMarkers(filterNet) {
-        markerGroup.clearLayers();
-        allMarkers = [];
-        let nR = 0, nO = 0, nU = 0, nS = 0;
-        markersData.forEach(m => {
-            if (filterNet && filterNet !== 'all' && String(m.reseller_id) !== String(filterNet)) return;
-            nR++; nS += (m.sessions || 0);
-            if (m.status === 'online') nO++;
-            if (!m.has_coords) nU++;
-            const latlng = m.has_coords ? [m.lat, m.lng] : [mapCenter[0], mapCenter[1]];
-            const mk = L.marker(latlng, { icon: m.has_coords ? serverIcon : unsetIcon, draggable: true, title: m.name });
-            mk._routerId = m.id;
-            mk.bindPopup(() => popupHtml(m));
-            mk.on('dragend', function() {
-                const p = mk.getLatLng();
-                m.lat = p.lat; m.lng = p.lng; m.has_coords = true;
-                mk.setIcon(serverIcon);
-                mk.bindPopup(() => popupHtml(m));
-                updateStats();
-            });
-            markerGroup.addLayer(mk);
-            allMarkers.push(mk);
+    visible.forEach(d => {
+        const m = L.marker([d.lat, d.lng], {
+            icon: L.divIcon({ html: markerHtml(d), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }),
+            riseOnHover: true
         });
-        document.getElementById('stat-routers').textContent = nR;
-        document.getElementById('stat-online').textContent = nO;
-        document.getElementById('stat-unset').textContent = nU;
-        document.getElementById('stat-sessions').textContent = nS;
-        if (allMarkers.length > 0) {
-            try { map.fitBounds(markerGroup.getBounds().pad(0.2)); } catch(e) { map.setView([mapCenter[0], mapCenter[1]], mapCenter[2]); }
-        } else {
-            map.setView([mapCenter[0], mapCenter[1]], mapCenter[2]);
-        }
-    }
+        m.on('mouseover', e => showHover(d, e.originalEvent));
+        m.on('mousemove', e => positionHover(e.originalEvent));
+        m.on('mouseout', hideHover);
+        m.on('click', () => { hideHover(); openDrawer(d); });
+        m.addTo(markerGroup);
+    });
+}
 
-    function updateStats() {
-        let nU = 0;
-        markersData.forEach(m => { if (!m.has_coords) nU++; });
-        document.getElementById('stat-unset').textContent = nU;
-    }
+function renderHeat() {
+    if (heatLayer) map.removeLayer(heatLayer);
+    const pts = DATA.devices.filter(d => d.lat != null).map(d => {
+        const sessions = d.online_sessions || 0;
+        const inten = sessions > 0 ? Math.min(1, 0.35 + sessions / 60) : 0.12;
+        return [d.lat, d.lng, inten];
+    });
+    heatLayer = L.heatLayer(pts, {
+        radius: 38, blur: 28, maxZoom: 15,
+        gradient: { .4: 'blue', .6: 'cyan', .7: 'lime', .8: 'yellow', 1: 'red' }
+    }).addTo(map);
+}
 
-    function filterByNetwork(v) { drawMarkers(v); }
+function fitToMarkers() {
+    const pts = DATA.devices.filter(d => d.lat != null).map(d => [d.lat, d.lng]);
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [60, 60] });
+}
 
-    let heatLayer = null, heatOn = false;
-    function toggleHeatmap() {
-        const btn = document.getElementById('heatmap-btn');
-        if (heatOn) {
-            map.removeLayer(heatLayer); map.addLayer(markerGroup);
-            heatOn = false; btn.classList.remove('bg-rose-800'); btn.classList.add('bg-rose-600/90');
-        } else {
-            const pts = heatPoints.length > 0 ? heatPoints : markersData.filter(m=>m.has_coords).map(m=>[m.lat,m.lng,1]);
-            map.removeLayer(markerGroup);
-            heatLayer = L.heatLayer(pts, { radius: 35, blur: 25, maxZoom: 15, gradient: {0.4:'blue',0.6:'cyan',0.7:'lime',0.8:'yellow',1.0:'red'} });
-            map.addLayer(heatLayer);
-            heatOn = true; btn.classList.add('bg-rose-800'); btn.classList.remove('bg-rose-600/90');
-        }
-    }
+/* ---------- كارت الـ Hover ---------- */
+function showHover(d, ev) {
+    const st = statusInfo(d);
+    const card = document.getElementById('hoverCard');
+    card.innerHTML = `
+        <div class="hc-title">${esc(d.name)} <span style="color:${d.color}">●</span></div>
+        <div class="text-[10px] font-bold text-slate-400 mb-1.5">${typeLabel(d.type)} • ${esc(d.network_name)}</div>
+        <div class="hc-row"><b>الحالة</b><span style="color:${st.color}">${st.label}</span></div>
+        <div class="hc-row"><b>الخدمة</b><span>${d.service_state === 'closed' ? '🔒 مقفلة' : '🔓 مفتوحة'}</span></div>
+        <div class="hc-row"><b>IP</b><span class="font-mono">${esc(d.ip || '—')}</span></div>
+        <div class="hc-row"><b>جلسات نشطة</b><span>${d.online_sessions ?? 0}</span></div>
+        <div class="hc-row"><b>مشتركو الجهاز</b><span>${d.subscribers ?? 0}</span></div>
+        <div class="hc-row"><b>مشتركو الشبكة</b><span>${d.network_subscribers ?? 0}</span></div>
+        <div class="hc-row"><b>آخر ظهور</b><span>${esc(d.last_seen || '—')}</span></div>
+        <div class="hc-row" style="border:none"><b>الموقع</b><span>${d.location_source === 'gps' ? '🛰️ GPS' : d.location_source === 'ip' ? '🌍 IP' : d.location_source === 'manual' ? '✋ يدوي' : '—'}</span></div>
+        <div class="text-[10px] text-sky-400 font-black text-center mt-1.5">اضغط للتحكم ←</div>`;
+    card.classList.remove('hidden');
+    positionHover(ev);
+}
+function positionHover(ev) {
+    const card = document.getElementById('hoverCard');
+    const wrap = document.getElementById('map-wrapper').getBoundingClientRect();
+    let x = ev.clientX - wrap.left + 16, y = ev.clientY - wrap.top + 14;
+    if (x + 268 > wrap.width) x = ev.clientX - wrap.left - 274;
+    if (y + 230 > wrap.height) y = Math.max(6, wrap.height - 240);
+    card.style.left = x + 'px'; card.style.top = y + 'px';
+}
+function hideHover() { document.getElementById('hoverCard').classList.add('hidden'); }
 
-    function saveGeoData() {
-        const payload = { routers: markersData.filter(m=>m.has_coords).map(m=>({id:m.id, lat:m.lat, lng:m.lng})) };
-        if (payload.routers.length === 0) { alert('لا توجد إحداثيات للحفظ'); return; }
-        fetch('/routers/map/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then(r => r.json()).then(d => {
-            if (d.status === 'success') { alert('تم حفظ ' + d.saved + ' موقع بنجاح في قاعدة البيانات ✅'); }
-            else { alert('خطأ: ' + (d.message || 'فشل الحفظ')); }
-        }).catch(() => alert('تعذر الاتصال بالسيرفر'));
-    }
+/* ---------- لوحة التحكم (الضغط) ---------- */
+function openDrawer(d) {
+    const st = statusInfo(d);
+    const isAP = d.type === 'ap';
+    const el = document.getElementById('drawerContent');
+    el.innerHTML = `
+        <div class="flex justify-between items-center mb-3">
+            <div class="text-sm font-black text-white">⚙️ تحكم: ${esc(d.name)}</div>
+            <button onclick="closeDrawer()" class="text-slate-400 hover:text-white font-black">✕</button>
+        </div>
+        <div class="text-[11px] font-bold mb-3 px-2 py-1.5 rounded-lg" style="background:${d.color}22;color:${d.color};border:1px solid ${d.color}66">
+            ${typeLabel(d.type)} • ${esc(d.network_name)}
+        </div>
+        <div class="space-y-1.5 mb-4 text-[11px]">
+            <div class="hc-row"><b>الحالة</b><span style="color:${st.color}">${st.label}</span></div>
+            <div class="hc-row"><b>حالة الخدمة</b><span>${d.service_state === 'closed' ? '🔒 مقفلة' : '🔓 مفتوحة'}</span></div>
+            <div class="hc-row"><b>IP</b><span class="font-mono">${esc(d.ip || '—')}</span></div>
+            <div class="hc-row"><b>آخر ظهور</b><span>${esc(d.last_seen || '—')}</span></div>
+            <div class="hc-row"><b>جلسات نشطة</b><span>${d.online_sessions ?? 0}</span></div>
+            <div class="hc-row"><b>مشتركو الشبكة</b><span>${d.network_subscribers ?? 0}</span></div>
+            <div class="hc-row"><b>الإحداثيات</b><span class="font-mono">${d.lat != null ? d.lat.toFixed(4) + ', ' + d.lng.toFixed(4) : '—'}</span></div>
+            <div class="hc-row" style="border:none"><b>مصدر الموقع</b><span>${d.location_source || '—'}</span></div>
+        </div>
+        ${isAP ? `
+            <div class="text-[11px] text-slate-400 font-bold bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+                📡 جهاز تابع (بدون تحكم مباشر). حالته بتتحدث من الشبكة الخارجية.
+            </div>` : `
+            ${d.service_state === 'closed'
+                ? `<button class="drawer-btn btn-unlock mb-2" onclick="toggleService(${d.id}, 'unlock')">🔓 فتح الخدمة (إعادة الإنترنت)</button>`
+                : `<button class="drawer-btn btn-lock mb-2" onclick="toggleService(${d.id}, 'lock')">🔒 قفل الخدمة (قطع الإنترنت فقط)</button>`}
+            <button class="drawer-btn btn-ghost mb-2" onclick="syncNow(${d.id})">🔄 مزامنة فورية مع الجهاز</button>
+            <a class="drawer-btn btn-ghost block text-center no-underline" href="/admin/servers">🖥️ صفحة السيرفرات</a>
+            <div class="text-[10px] text-slate-500 font-bold mt-2 leading-relaxed">
+                * القفل بيقطع الإنترنت عن المتعاملين فقط — إدارة الجهاز بتفضل شغالة ويرجع بضغطة.<br>
+                * المراقبة الذاتية: كل ٥ دقائق (المهمة المجدولة) + المزامنة اليدوية دي.
+            </div>`}
+    `;
+    document.getElementById('deviceDrawer').classList.remove('-translate-x-full');
+}
+function closeDrawer() { document.getElementById('deviceDrawer').classList.add('-translate-x-full'); }
 
-    drawMarkers('all');
+async function toggleService(id, action) {
+    const label = action === 'lock' ? 'قفل الخدمة (قطع الإنترنت)' : 'فتح الخدمة';
+    if (!confirm(`تأكيد: ${label} على هذا الجهاز؟`)) return;
+    try {
+        const r = await fetch(`/api/routers/${id}/service`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        const j = await r.json();
+        toast(j.message || (j.success ? 'تم' : 'فشل'), j.success ? 'ok' : 'err');
+        if (j.success) { closeDrawer(); fetchMapData(false); }
+    } catch (e) { toast('خطأ في الاتصال: ' + e.message, 'err'); }
+}
+
+async function syncNow(id) {
+    try {
+        const r = await fetch(`/admin/servers/sync/${id}`, { method: 'POST' });
+        const j = await r.json();
+        toast(j.message || (j.success ? 'تمت المزامنة' : 'فشلت المزامنة'), j.success ? 'ok' : 'err');
+        fetchMapData(false);
+    } catch (e) { toast('خطأ: ' + e.message, 'err'); }
+}
+
+/* ---------- Toast ---------- */
+function toast(msg, kind) {
+    const box = document.getElementById('toasts');
+    const t = document.createElement('div');
+    t.className = 'toast ' + (kind || '');
+    t.textContent = msg;
+    box.appendChild(t);
+    setTimeout(() => { t.style.opacity = 0; setTimeout(() => t.remove(), 300); }, 4000);
+}
+
+/* ---------- شاشة كاملة ---------- */
+function toggleFullScreen() {
+    const w = document.getElementById('map-wrapper'), b = document.getElementById('fullscreen-btn');
+    if (!document.fullscreenElement) { w.requestFullscreen().catch(() => {}); b.innerHTML = '🗗 تصغير'; }
+    else { document.exitFullscreen(); b.innerHTML = '⛶ تكبير'; }
+}
+document.addEventListener('fullscreenchange', () => setTimeout(() => map.invalidateSize(), 200));
+
+/* ---------- الإقلاع ---------- */
+['networkFilter', 'typeFilter', 'statusFilter'].forEach(id =>
+    document.getElementById(id).addEventListener('change', () => { renderLinesAndMarkers(); if (heatOn) renderHeat(); }));
+
+fetchMapData(false);
+startPolling();
 </script>
 {% endblock %}

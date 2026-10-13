@@ -339,3 +339,39 @@ class MikrotikHandler:
         except Exception as e:
             logger.error(f"فشل تغيير حالة الكرت {interface_name} على {self.host}: {str(e)}")
             return False
+
+    # ==========================================
+    # قفل/فتح الخدمة عن بُعد (Service Gate - آمن ويرجع بضغطة)
+    # يقطع حركة المتعاملين (forward) فقط ويبقي إدارة الجهاز حيّة (input/output)
+    # ==========================================
+    def set_service_state(self, closed):
+        """قفل (True) أو فتح (False) الخدمة على الروتر عبر firewall address-list"""
+        if not self.api:
+            return False
+        try:
+            address_list = self.api.get_resource('/ip/firewall/address-list')
+            if closed:
+                # 1) التأكد من وجود قاعدة DROP لقائمة sakr_service_closed
+                firewall = self.api.get_resource('/ip/firewall/filter')
+                rules = firewall.get(comment='SakrConnect_ServiceGate')
+                if not rules:
+                    firewall.add(
+                        chain='forward',
+                        src_address_list='sakr_service_closed',
+                        action='drop',
+                        comment='SakrConnect_ServiceGate'
+                    )
+                # 2) حظر كل حركة المتعاملين (المستخدمين) - الإدارة تفضل شغالة
+                entries = address_list.get(list='sakr_service_closed')
+                if not any(e.get('address') == '0.0.0.0/0' for e in entries):
+                    address_list.add(list='sakr_service_closed', address='0.0.0.0/0')
+                logger.info(f"🔒 تم قفل الخدمة على الميكروتيك: {self.host}")
+            else:
+                # فتح الخدمة: إزالة كل عناصر القائمة (القاعدة تفضل موجودة بدون أثر)
+                for e in address_list.get(list='sakr_service_closed'):
+                    address_list.remove(id=e['id'])
+                logger.info(f"🔓 تم فتح الخدمة على الميكروتيك: {self.host}")
+            return True
+        except Exception as e:
+            logger.error(f"خطأ أثناء تغيير حالة الخدمة {self.host}: {str(e)}")
+            return False

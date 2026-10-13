@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import datetime
 from core.db_manager import db_session as db
-from database.models import Router, ActiveSession, Network, Subscriber, User, AuditLog, SaasPackage, LineUsageBaseline
+from database.models import Router, ActiveSession, Network, Subscriber, User, AuditLog, SaasPackage, LineUsageBaseline, AdminNotification
 
 infrastructure_bp = Blueprint('infrastructure', __name__)
 
@@ -229,6 +229,190 @@ def save_router_coords():
         db.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "success", "saved": saved})
+
+# ==========================================
+# 1-ب. API البيانات الحيّة للخريطة (يُستدعى من الواجهة كل 15 ثانية)
+# ==========================================
+NET_PALETTE = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4',
+               '#f97316', '#ec4899', '#84cc16', '#14b8a6', '#eab308', '#6366f1']
+
+
+def _map_scope(role, user_id):
+    """يحدد الشبكات المسموح لصاحب الجلسة برؤيتها في الخريطة (بنفس منطق صفحة الخريطة)."""
+    if role in ['admin', 'super_admin']:
+        networks = db.query(Network).all()
+    else:
+        owner_id = user_id
+        try:
+            _u = db.query(User).filter_by(id=user_id).first()
+            if _u and _u.role in ['reseller', 'manager'] and _u.parent_id:
+                owner_id = _u.parent_id
+        except Exception:
+            pass
+        networks = db.query(Network).filter_by(owner_id=owner_id).all()
+    colors = {n.id: NET_PALETTE[i % len(NET_PALETTE)] for i, n in enumerate(networks)}
+    names = {n.id: n.name for n in networks}
+    return networks, colors, names
+
+
+@infrastructure_bp.route('/api/routers/map-data')
+def routers_map_data():
+    role = session.get('role')
+    user_id = session.get('user_id')
+    if role not in ['admin', 'super_admin', 'network', 'cafe']:
+        return jsonify({"success": False, "message": "غير مصرح"}), 403
+
+    networks, network_colors, network_names = _map_scope(role, user_id)
+    net_ids = list(network_colors.keys())
+    if not net_ids:
+        return jsonify({"success": True, "networks": [], "devices": [], "unlocated": [], "stats": {}})
+
+    routers = db.query(Router).filter(
+        Router.network_id.in_(net_ids),
+        Router.is_deleted == False
+    ).all()
+
+    from sqlalchemy import func as _safunc
+    # عدادات حية من الداتا بيز (بدون اتصال بالميكروتيك - خفيف)
+    active_counts = dict(
+        db.query(ActiveSession.router_id, _safunc.count(ActiveSession.id))
+        .group_by(ActiveSession.router_id).all()
+    )
+    subs_counts = dict(
+        db.query(Subscriber.network_id, _safunc.count(Subscriber.id))
+        .group_by(Subscriber.network_id).all()
+    )
+    subs_by_router = dict(
+        db.query(Subscriber.router_id, _safunc.count(Subscriber.id))
+        .filter(Subscriber.router_id.isnot(None))
+        .group_by(Subscriber.router_id).all()
+    )
+
+    devices = []
+    unlocated = []
+    online_routers = 0
+    total_routers = 0
+
+    def _last_seen(dt):
+        if not dt:
+            return None
+        try:
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            return str(dt)
+
+    for r in routers:
+        total_routers += 1
+        is_online = (r.status == 'online')
+        if is_online:
+            online_routers += 1
+
+        # نوع الجهاز: سيرفر رئيسي (طبقة الإخراج) أو روتر توزيع
+        dev_role = getattr(r, 'role', 'main') or 'main'
+        dev_type = 'server' if dev_role == 'main' else 'router'
+
+        item = {
+            "id": r.id,
+            "type": dev_type,
+            "role": dev_role,
+            "name": r.name,
+            "network_id": r.network_id,
+            "network_name": network_names.get(r.network_id, 'غير محدد'),
+            "color": network_colors.get(r.network_id, '#64748b'),
+            "status": r.status,
+            "service_state": getattr(r, 'service_state', None) or 'open',
+            "parent_id": getattr(r, 'parent_id', None),
+            "ip": r.ip_address,
+            "server_type": r.server_type,
+            "online_sessions": active_counts.get(r.id, 0),
+            "subscribers": subs_by_router.get(r.id, 0),
+            "network_subscribers": subs_counts.get(r.network_id, 0),
+            "last_seen": _last_seen(getattr(r, 'last_seen_at', None)) or _last_seen(r.created_at),
+            "lat": getattr(r, 'latitude', None),
+            "lng": getattr(r, 'longitude', None),
+            "location_source": getattr(r, 'location_source', None),
+        }
+
+        if item["lat"] is None or item["lng"] is None:
+            unlocated.append(item)
+        else:
+            devices.append(item)
+
+    stats = {
+        "networks": len(net_ids),
+        "routers_total": total_routers,
+        "routers_online": online_routers,
+        "routers_offline": total_routers - online_routers,
+        "subscribers": sum(subs_counts.values()),
+        "active_sessions": sum(active_counts.values()),
+        "access_points": 0,
+        "unlocated": len(unlocated)
+    }
+
+    return jsonify({
+        "success": True,
+        "networks": [{"id": n.id, "name": n.name, "color": network_colors[n.id],
+                      "subscribers": subs_counts.get(n.id, 0)} for n in networks],
+        "devices": devices,
+        "unlocated": unlocated,
+        "stats": stats,
+        "server_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    })
+
+
+# ==========================================
+# 1-ج. قفل/فتح الخدمة على جهاز (قطع الإنترنت فقط - آمن ويرجع بضغطة)
+# ==========================================
+@infrastructure_bp.route('/api/routers/<int:router_id>/service', methods=['POST'])
+def toggle_router_service(router_id):
+    role = session.get('role')
+    user_id = session.get('user_id')
+    if role not in ['admin', 'super_admin', 'network', 'cafe']:
+        return jsonify({"success": False, "message": "غير مصرح"}), 403
+
+    router = db.query(Router).filter_by(id=router_id, is_deleted=False).first()
+    if not router:
+        return jsonify({"success": False, "message": "الجهاز غير موجود"}), 404
+
+    if role not in ['admin', 'super_admin']:
+        allowed_ids = {n.id for n in _map_scope(role, user_id)[0]}
+        if router.network_id not in allowed_ids:
+            return jsonify({"success": False, "message": "غير مصرح لك بالتحكم بهذا الجهاز"}), 403
+
+    data = request.get_json(silent=True) or {}
+    action = data.get('action')  # 'lock' أو 'unlock'
+    if action not in ('lock', 'unlock'):
+        return jsonify({"success": False, "message": "إجراء غير صحيح"}), 400
+
+    close = (action == 'lock')
+
+    from core.mikrotik.dispatcher import get_router_and_execute
+    resp = get_router_and_execute(router.id, 'set_service_state', closed=close)
+
+    if not isinstance(resp, dict) or not resp.get('success'):
+        return jsonify({"success": False,
+                        "message": (resp or {}).get('message') or "تعذر تنفيذ الأمر على الجهاز"}), 502
+
+    # حفظ الحالة الجديدة + إشعار لصاحب الشبكة
+    router.service_state = 'closed' if close else 'open'
+    try:
+        owner_id = router.network.owner_id if router.network else None
+        if owner_id:
+            db.add(AdminNotification(
+                related_user_id=owner_id,
+                title=(("🔒 تم قفل الخدمة" if close else "🔓 تم فتح الخدمة") + f": {router.name}")[:100],
+                message=(f"تم قفل خدمة الجهاز '{router.name}' ({router.ip_address}) عن بُعد."
+                         if close else
+                         f"تم فتح خدمة الجهاز '{router.name}' ({router.ip_address}) واستعادة الخدمة.")
+            ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return jsonify({"success": True,
+                    "message": ("تم قفل الخدمة (قطع الإنترنت)" if close else "تم فتح الخدمة"),
+                    "service_state": router.service_state})
+
 
 # ==========================================
 # 2. إعدادات ومراقبة المايكروتيك (تم حل مشكلة الـ UndefinedError)

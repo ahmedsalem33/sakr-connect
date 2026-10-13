@@ -155,6 +155,9 @@ class Router(Base):
     # إحداثيات الخريطة (تُضبط بالسحب من لوحة الخريطة)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+
+    # حالة الخدمة (open/closed) — قفل/فتح الإنترنت من الخريطة الحيّة
+    service_state = Column(String(10), nullable=True, default='open')
     
     ztp_token = Column(String(100), unique=True, nullable=True, index=True)
     is_provisioned = Column(Boolean, default=False)

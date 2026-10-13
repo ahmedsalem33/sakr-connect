@@ -82,6 +82,8 @@ def init_db():
                     connection.execute(text("ALTER TABLE routers ADD COLUMN latitude FLOAT;"))
                 if 'longitude' not in router_columns:
                     connection.execute(text("ALTER TABLE routers ADD COLUMN longitude FLOAT;"))
+                if 'service_state' not in router_columns:
+                    connection.execute(text("ALTER TABLE routers ADD COLUMN service_state VARCHAR(10) DEFAULT 'open';"))
             except Exception as _e:
                 logger.warning("router geo migration skipped: {}".format(_e))
 
