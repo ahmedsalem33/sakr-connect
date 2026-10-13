@@ -97,7 +97,7 @@ def view_ticket_user(ticket_id):
 
 @support_bp.route('/admin/support', methods=['GET'])
 def admin_support():
-    if session.get('role') != 'admin':
+    if session.get('role') not in ['admin', 'super_admin']:
         abort(403)
         
     # جلب كافة التذاكر من جميع العملاء للإدارة المركزية
@@ -112,7 +112,7 @@ def admin_support():
 
 @support_bp.route('/admin/support/ticket/<int:ticket_id>', methods=['GET', 'POST'])
 def admin_manage_ticket(ticket_id):
-    if session.get('role') != 'admin':
+    if session.get('role') not in ['admin', 'super_admin']:
         abort(403)
         
     ticket = db_session.query(Ticket).filter_by(id=ticket_id).first()
@@ -147,11 +147,11 @@ def admin_manage_ticket(ticket_id):
     
     # جلب بيانات العميل صاحب التذكرة للعرض في لوحة الإدارة
     client_name = "غير معروف"
-    if ticket.user_type in ['home', 'cafe']:
+    if ticket.user_type == 'home':
         client = db_session.query(Subscriber).filter_by(id=ticket.user_id).first()
         if client: client_name = client.username
-    elif ticket.user_type == 'network':
+    elif ticket.user_type in ['cafe', 'network']:
         client = db_session.query(User).filter_by(id=ticket.user_id).first()
-        if client: client_name = client.fullname
+        if client: client_name = client.fullname or client.username
 
     return render_template('admin_ticket_view.html', ticket=ticket, replies=replies, client_name=client_name)

@@ -82,7 +82,10 @@ def saas_lockdown_middleware():
         '/portal', '/process_fast_purchase', '/download', '/logout',
         # صفحة الفواتير نفسها لازم تفضل مفتوحة وإلا بيحصل redirect loop
         # (القفل يحوّل لها → وهي كانت بترجع تحوّل لنفسها)
-        '/account/billing'
+        '/account/billing',
+        # الدعم الفني لازم يفضل متاح دائماً - حتى للعملاء المقفلين
+        # (العميل المقفل بيبعت تذكرة دعم عشان يعالج مشكلة الدفع)
+        '/support'
     ]
     
     if any(request.path.startswith(p) for p in exempt_paths):
