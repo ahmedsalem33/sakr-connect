@@ -79,7 +79,10 @@ def saas_lockdown_middleware():
         '/static', '/auth/login', '/auth/logout', '/auth/register', 
         '/auth/admin/login', '/auth/forgot-password', '/api/check_username',
         '/client/account', '/finance/checkout', '/api/generate_script',
-        '/portal', '/process_fast_purchase', '/download', '/logout'
+        '/portal', '/process_fast_purchase', '/download', '/logout',
+        # صفحة الفواتير نفسها لازم تفضل مفتوحة وإلا بيحصل redirect loop
+        # (القفل يحوّل لها → وهي كانت بترجع تحوّل لنفسها)
+        '/account/billing'
     ]
     
     if any(request.path.startswith(p) for p in exempt_paths):
